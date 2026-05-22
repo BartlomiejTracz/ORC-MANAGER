@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Championship Selection - WRC Manager{% endblock %}
+{% block content %}
+    <h1 class="page-header">Your Championships (Workspaces)</h1>
+    
+    <div class="card" style="margin-bottom: 40px; border-top: 4px solid var(--primary); max-width: 600px;">
+        <h2 class="card-title">Create a new Championship</h2>
+        <form action="/add_championship" method="POST" style="display: flex; gap: 15px;">
+            <input type="text" name="name" required placeholder="e.g. ORC-2 - Season 6" style="margin: 0; flex: 1;">
+            <button type="submit" class="btn btn-primary">Create Card</button>
+        </form>
+    </div>
+
+    <div class="grid">
+        {% for c in champs %}
+        <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 5px solid var(--danger);">
+            <div>
+                <h2 style="font-size: 1.8rem; margin-bottom: 15px; color: var(--text-main);">{{ c.name }}</h2>
+                <p style="color: #64748b; margin-bottom: 25px;">Manage teams, drivers, and results in an isolated environment for this championship.</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <a href="/c/{{ c.id }}/dashboard" class="btn btn-success" style="flex: 1;">Enter Dashboard ➔</a>
+                <form action="/delete_championship/{{ c.id }}" method="POST" onsubmit="return confirm('WARNING! Deleting a Championship will permanently erase all saved Rallies, Teams, Drivers, and Results within it. Are you sure you want to continue?');" style="margin:0;">
+                    <button type="submit" class="btn btn-danger" title="Delete Championship">🗑️</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #888;">
+            No active championships. Create your first card above!
+        </div>
+        {% endfor %}
+    </div>
+{% endblock %}

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rally Results</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e24;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+        }
+
+        #graphic-container {
+            background-color: #15151a;
+            padding: 30px;
+            border-radius: 10px;
+            width: 800px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e74c3c;
+            padding-bottom: 10px;
+        }
+        .header h1 { margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; }
+        .header p { margin: 5px 0 0 0; color: #aaa; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 16px;
+        }
+        th {
+            background-color: #2c2c35;
+            color: #aaa;
+            padding: 10px;
+            text-align: left;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #2a2a35;
+            background-color: #1a1a20;
+        }
+        
+        .pos { width: 40px; text-align: center; font-weight: bold; font-size: 18px; color: #e74c3c; }
+        .driver-name { font-weight: bold; font-size: 18px; }
+        .team-info { display: block; font-size: 12px; color: #888; margin-top: 2px; }
+        
+        .time { font-family: monospace; font-size: 18px; font-weight: bold; text-align: right; }
+        .gap { font-family: monospace; font-size: 16px; color: #e74c3c; text-align: right; }
+        
+        .team-color-bar {
+            display: inline-block;
+            width: 8px;
+            height: 24px;
+            vertical-align: middle;
+            margin-right: 10px;
+            border-radius: 2px;
+            box-sizing: border-box;
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            background-color: #e74c3c;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #c0392b; }
+        .btn-secondary { background-color: #34495e; }
+        .btn-secondary:hover { background-color: #2c3e50; }
+    </style>
+</head>
+<body>
+
+    <div id="graphic-container">
+        <div class="header">
+            <h1>Overall Standings</h1>
+            <p>Unofficial rally results</p>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Pos</th>
+                    <th>Driver / Team</th>
+                    <th style="text-align: right;">Time</th>
+                    <th style="text-align: right;">Gap</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for w in results_data %}
+                <tr>
+                    <td class="pos">{{ w.pos }}</td>
+                    <td>
+                        {# Safe and error-free two-color syntax for VS Code #}
+                        {% set main_c = w.color_hex if w.color_hex else '#555' %}
+                        {% set bord_c = w.color_border_hex if w.color_border_hex else '#555' %}
+                        {% set bar_style = 'style="background-color: ' ~ main_c ~ '; border: 2px solid ' ~ bord_c ~ ';"' %}
+                        
+                        <span class="team-color-bar" {{ bar_style | safe }}></span>
+                        <span class="driver-name">{{ w.discord_name }}</span>
+                        <span class="team-info">{{ w.team_name if w.team_name else 'Privateer' }} ({{ w.car if w.car else '-' }})</span>
+                    </td>
+                    <td class="time">{{ w.time }}</td>
+                    <td class="gap">{{ w.gap }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="controls">
+        <button onclick="window.history.back()" class="btn-secondary">⬅ Back to Dashboard</button>
+        <button onclick="downloadGraphic()">📸 Download as PNG</button>
+    </div>
+
+    <script>
+        function downloadGraphic() {
+            const element = document.getElementById("graphic-container");
+            
+            html2canvas(element, {
+                backgroundColor: "#15151a", 
+                scale: 2 
+            }).then(canvas => {
+                let link = document.createElement('a');
+                link.download = 'rally_results.png'; 
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>

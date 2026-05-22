@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Graphics Generator - {{ champ.name }}{% endblock %}
+{% block content %}
+    <h1 class="page-header">📸 Graphics Generator</h1>
+    <p style="color: #64748b; margin-bottom: 25px; font-size: 1.1rem;">Click on a link to open the pre-calculated, render-ready graphic in a new tab.</p>
+    
+    <div class="grid">
+        <div class="card" style="border-top: 4px solid var(--primary);">
+            <h2 class="card-title">Rally & Powerstage Results</h2>
+            <ul style="list-style: none; padding: 0;">
+                {% for r in rallies %}
+                <li style="margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                    <strong style="font-size: 1.15rem; color: var(--nav-bg);">{{ r.name }}</strong><br>
+                    
+                    <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <a href="/c/{{ champ.id }}/render/rally/{{ r.id }}" target="_blank" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem; background: #2980b9;">📊 Overall Results</a>
+                        <a href="/c/{{ champ.id }}/render/powerstage/{{ r.id }}" target="_blank" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;">⭐ Powerstage</a>
+                    </div>
+                </li>
+                {% else %}
+                <li style="color: #888;">No rallies found. Add a rally first.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <div class="card" style="border-top: 4px solid var(--success);">
+            <h2 class="card-title">Championship Standings</h2>
+            <p style="margin-bottom: 15px; color: #64748b;">Generates the overall season points table.</p>
+            <a href="/c/{{ champ.id }}/render/championship" target="_blank" class="btn btn-success btn-block" style="padding: 12px;">🏆 Championship Table</a>
+        </div>
+    </div>
+{% endblock %}

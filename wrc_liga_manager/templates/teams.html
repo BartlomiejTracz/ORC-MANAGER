@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Teams - {{ champ.name }}{% endblock %}
+{% block content %}
+    <h1 class="page-header">Team Management</h1>
+    <div class="grid">
+        <div class="card" style="border-top: 4px solid var(--primary);">
+            <h2 class="card-title">Team Creator</h2>
+            <form action="/c/{{ champ.id }}/add_team" method="POST">
+                <label>Full Team Name</label><input type="text" name="name" required placeholder="e.g. Toyota Gazoo Racing">
+                <label>Vehicle Model</label><input type="text" name="car" required placeholder="e.g. Toyota GR Yaris Rally1">
+                
+                <div style="display: flex; gap: 15px; margin-top: 10px;">
+                    <div style="flex: 1;"><label>Main Color</label><input type="color" name="color_hex" value="#8b5cf6" style="height: 45px; padding: 2px;"></div>
+                    <div style="flex: 1;"><label>Border Color</label><input type="color" name="color_border_hex" value="#000000" style="height: 45px; padding: 2px;"></div>
+                </div>
+                
+                <div style="margin-top: 15px; margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #cbd5e1;">
+                        <input type="checkbox" name="is_factory" value="true" style="width: 20px; height: 20px; margin: 0;">
+                        <span>Mark as a <strong>Factory Team</strong></span>
+                    </label>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">Create Team</button>
+            </form>
+        </div>
+        <div class="card">
+            <h2 class="card-title">Team Database</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead><tr><th>Livery</th><th>Team Name / Vehicle</th><th style="text-align: right;">Action</th></tr></thead>
+                    <tbody>
+                        {% for t in teams %}
+                        <tr>
+                            <td style="width: 60px;">
+                                {% set m_col = t.color_hex if t.color_hex else '#555' %}
+                                {% set b_col = t.color_border_hex if t.color_border_hex else '#000' %}
+                                {% set dyn_style = 'style="background: ' ~ m_col ~ '; border: 2px solid ' ~ b_col ~ '; width: 30px; height: 30px;"' %}
+                                <div class="color-preview" {{ dyn_style | safe }}></div>
+                            </td>
+                            <td>
+                                <strong>{{ t.name }}</strong>
+                                {% if t.is_factory %}
+                                <span style="background: #f1c40f; color: #000; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px; vertical-align: middle;">FACTORY</span>
+                                {% endif %}<br>
+                                <span style="font-size: 0.85rem; color: #64748b;">{{ t.car }}</span>
+                            </td>
+                            <td style="text-align: right;">
+                                <form action="/c/{{ champ.id }}/delete_team/{{ t.id }}" method="POST" onsubmit="return confirm('Drivers will become Privateers. Continue?');">
+                                    <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Rallies - {{ champ.name }}{% endblock %}
+{% block content %}
+    <h1 class="page-header">Rally Schedule</h1>
+
+    <div class="card" style="border-top: 4px solid var(--success); max-width: 600px; margin-bottom: 30px;">
+        <h2 class="card-title">Add Rally to {{ champ.name }}</h2>
+        <form action="/c/{{ champ.id }}/add_rally" method="POST">
+            <label>Rally Name (e.g., Rally Sweden)</label>
+            <input type="text" name="name" required>
+            <label>Number of Stages (The last one is the Powerstage)</label>
+            <input type="number" name="stages_count" value="7" min="1" required>
+            <button type="submit" class="btn btn-success btn-block">Create Rally</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">List of Rallies in the Championship</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr><th>Rally</th><th style="text-align: center;">Stage Count</th><th style="text-align: right;">Action</th></tr>
+                </thead>
+                <tbody>
+                    {% for r in rallies %}
+                    <tr>
+                        <td><strong style="font-size: 1.1rem;">{{ r.name }}</strong></td>
+                        <td style="text-align: center;"><span style="background: var(--nav-bg); color: white; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 0.9rem;">{{ r.stages_count }}</span></td>
+                        <td style="text-align: right;">
+                            <form action="/c/{{ champ.id }}/delete_rally/{{ r.id }}" method="POST" onsubmit="return confirm('Deleting the rally will also delete all of its results! Continue?');">
+                                <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" style="text-align: center; padding: 20px;">No rallies in this championship yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

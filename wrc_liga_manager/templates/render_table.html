@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Barlow', sans-serif; background: #0b0a12; color: white; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; min-height: 100vh; }
+        .gfx-page { width: 850px; max-width: 100%; margin-bottom: 20px; position: relative; }
+        
+        .gfx-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; border-bottom: 2px solid #a87ffb; padding: 10px 0 16px 0; width: 850px; }
+        .gfx-header h1 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #fff; flex: 1; }
+        
+        .podium-container { width: 850px; display: flex; align-items: flex-end; justify-content: center; gap: 15px; margin-bottom: 25px; height: 350px; }
+        .podium-place { position: relative; width: 260px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; }
+        .podium-card-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.85; z-index: 1; }
+        .podium-content { position: relative; z-index: 2; padding: 20px; display: flex; flex-direction: column; height: 100%; color: white; flex: 1; }
+
+        .p-first { height: 350px; transform: scale(1.0); }
+        .p-second { height: 310px; transform: scale(1.0); }
+        .p-third { height: 280px; transform: scale(1.0); }
+
+        .podium-pos { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 5.5rem; line-height: 0.8; opacity: 0.25; position: absolute; top: -5px; right: 10px; color: #ffffff; }
+        .podium-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+        .podium-nat { font-size: 1.8rem; }
+        .podium-num { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 1.2rem; background: #2a1f42; padding: 2px 8px; border-radius: 4px; color: white; min-width: 35px; text-align: center; border: 1px solid #a87ffb; }
+        
+        .podium-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .podium-team { font-size: 0.85rem; color: rgba(220,200,255,0.8); margin-bottom: 20px; flex: 1; line-height: 1.3; }
+        .factory-badge { background: #f1c40f; color: #000; font-size: 0.65rem; padding: 2px 5px; border-radius: 3px; font-weight: bold; margin-right: 5px; vertical-align: middle; }
+        
+        .podium-points { margin-top: auto; border-top: 1px solid rgba(168,127,251,0.4); padding-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .p-pts-lbl { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; color: rgba(200,180,255,0.8); }
+        .p-pts-val { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 2.2rem; color: #f1c40f; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+
+        .gfx-table-container { width: 850px; background: #131220; padding: 20px 30px 32px 30px; border-radius: 10px; box-shadow: 0 12px 48px rgba(0,0,0,0.6); border: 1px solid #231f38; }
+        .gfx-table { width: 100%; border-collapse: collapse; }
+        .gfx-table th { background: #1a192c; color: #7c7a94; padding: 9px 10px; text-align: left; font-size: 0.68rem; letter-spacing: 2px; text-transform: uppercase; font-weight: 600; font-family: 'Barlow Condensed', sans-serif; }
+        .gfx-table td { padding: 11px 10px; border-bottom: 1px solid #1e1d33; background: #131220; }
+        
+        tr.leader-row td { background: #1f1b35 !important; border-bottom: 2px solid #a87ffb; }
+        tr.gap-row td { height: 10px; padding: 0; background: #0b0a12 !important; border: none; }
+        .gfx-table tr:last-child td { border-bottom: none; }
+
+        .col-pos { width: 36px; text-align: center; font-family: 'Barlow Condensed', sans-serif; font-size: 1.3rem; font-weight: 900; color: #c299ff; }
+        .col-pts { text-align: center; font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 700; color: #f1c40f; width: 45px;}
+
+        .driver-cell { display: flex; align-items: center; gap: 12px; }
+        .color-bar { width: 5px; height: 36px; border-radius: 3px; flex-shrink: 0; }
+        
+        .driver-meta { display: flex; align-items: center; gap: 8px; margin-right: 4px; }
+        .driver-nat { font-size: 1.2rem; }
+        .driver-num { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 0.95rem; background: #2a1f42; padding: 2px 6px; border-radius: 4px; color: white; min-width: 28px; text-align: center; border: 1px solid #a87ffb; }
+        
+        .driver-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 700; color: #fff; letter-spacing: 0.5px; display: block; }
+        .team-name { font-size: 0.75rem; color: #8c89a8; margin-top: 2px; display: block; }
+        .col-time { text-align: right; font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 700; color: #fff; }
+        .col-gap  { text-align: right; font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; color: #c299ff; }
+        
+        .controls { margin-top: 20px; margin-bottom: 40px; display: flex; flex-wrap: wrap; gap: 12px; width: 850px; justify-content: flex-end; }
+        .btn { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1rem; letter-spacing: 1px; text-transform: uppercase; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; color: white; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.85; } .btn-primary { background: #a87ffb; } .btn-secondary { background: #231f38; border: 1px solid #383259; }
+    </style>
+</head>
+<body>
+
+<div id="app-data" data-pages-count="{{ pages|length }}" style="display:none;"></div>
+
+{% macro get_points_str(pts) -%}
+{{ pts if pts > 0 else '-' }}
+{%- endmacro %}
+
+{% macro render_driver_team(w) %}
+    {% if w.is_factory %}<span class="factory-badge">FACTORY</span>{% endif %}
+    {{ w.team_name if w.team_name else 'Privateer' }} <span style="opacity: 0.5; margin: 0 4px;">|</span> {{ w.display_car }}
+{% endmacro %}
+
+{% for page in pages %}
+<div class="gfx-page" id="graphic-{{ loop.index }}">
+    <div class="gfx-header">
+        <h1>{{ title }} - Part {{ loop.index }}</h1>
+    </div>
+
+    {% if show_points and loop.first and page|length >= 3 %}
+    
+        {% set d1 = page[0] %}
+        {% set d2 = page[1] %}
+        {% set d3 = page[2] %}
+        
+        <div class="podium-container">
+            {# Second Place #}
+            <div class="podium-place p-second">
+                {% set dyn_style = 'style="background: linear-gradient(180deg, ' ~ (d2.color_hex if d2.color_hex else '#555') ~ ' 0%, #131220 100%); border-top: 4px solid ' ~ (d2.color_border_hex if d2.color_border_hex else '#333') ~ ';"' %}
+                <div class="podium-card-bg" {{ dyn_style | safe }}></div>
+                <div class="podium-content">
+                    <span class="podium-pos">2</span>
+                    <div class="podium-meta">
+                        <span class="podium-nat">{{ d2.nationality }}</span>
+                        <span class="podium-num">#{{ d2.number }}</span>
+                    </div>
+                    <strong class="podium-name">{{ d2.discord_name }}</strong>
+                    <span class="podium-team">{{ render_driver_team(d2) }}</span>
+                    <div class="podium-points">
+                        <span class="p-pts-lbl">PTS</span>
+                        <span class="p-pts-val">{{ get_points_str(d2.points) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {# First Place #}
+            <div class="podium-place p-first">
+                {% set dyn_style = 'style="background: linear-gradient(180deg, ' ~ (d1.color_hex if d1.color_hex else '#555') ~ ' 0%, #131220 100%); border-top: 4px solid ' ~ (d1.color_border_hex if d1.color_border_hex else '#333') ~ ';"' %}
+                <div class="podium-card-bg" {{ dyn_style | safe }}></div>
+                <div class="podium-content">
+                    <span class="podium-pos">1</span>
+                    <div class="podium-meta">
+                        <span class="podium-nat">{{ d1.nationality }}</span>
+                        <span class="podium-num">#{{ d1.number }}</span>
+                    </div>
+                    <strong class="podium-name">{{ d1.discord_name }}</strong>
+                    <span class="podium-team">{{ render_driver_team(d1) }}</span>
+                    <div class="podium-points">
+                        <span class="p-pts-lbl">PTS</span>
+                        <span class="p-pts-val">{{ get_points_str(d1.points) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {# Third Place #}
+            <div class="podium-place p-third">
+                {% set dyn_style = 'style="background: linear-gradient(180deg, ' ~ (d3.color_hex if d3.color_hex else '#555') ~ ' 0%, #131220 100%); border-top: 4px solid ' ~ (d3.color_border_hex if d3.color_border_hex else '#333') ~ ';"' %}
+                <div class="podium-card-bg" {{ dyn_style | safe }}></div>
+                <div class="podium-content">
+                    <span class="podium-pos">3</span>
+                    <div class="podium-meta">
+                        <span class="podium-nat">{{ d3.nationality }}</span>
+                        <span class="podium-num">#{{ d3.number }}</span>
+                    </div>
+                    <strong class="podium-name">{{ d3.discord_name }}</strong>
+                    <span class="podium-team">{{ render_driver_team(d3) }}</span>
+                    <div class="podium-points">
+                        <span class="p-pts-lbl">PTS</span>
+                        <span class="p-pts-val">{{ get_points_str(d3.points) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% set table_rows = page[3:] %}
+        
+    {% else %}
+        {% set table_rows = page %}
+    {% endif %}
+    
+    {% if table_rows or not loop.first %}
+    <div class="gfx-table-container">
+        <table class="gfx-table">
+            <thead>
+                <tr>
+                    <th>Pos</th>
+                    <th>Driver / Team</th>
+                    <th style="text-align:right">Time / Total</th>
+                    <th style="text-align:right">Gap</th>
+                    {% if show_points %}<th style="text-align:center">PTS</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% if not loop.first and table_rows %}
+                    {% set leader = table_rows[0] %}
+                    <tr class="leader-row">
+                        <td class="col-pos">1</td>
+                        <td>
+                            {% set leader_style = 'style="background: ' ~ (leader.color_hex if leader.color_hex else '#555') ~ '; border: 1px solid ' ~ (leader.color_border_hex if leader.color_border_hex else '#555') ~ ';"' %}
+                            <div class="driver-cell">
+                                <div class="color-bar" {{ leader_style | safe }}></div>
+                                <div class="driver-meta">
+                                    <span class="driver-nat">{{ leader.nationality }}</span>
+                                    <span class="driver-num">#{{ leader.number }}</span>
+                                </div>
+                                <div>
+                                    <strong class="driver-name">{{ leader.discord_name }}</strong>
+                                    <span class="team-name">{{ render_driver_team(leader) }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="col-time">{{ leader.time }}</td>
+                        <td class="col-gap">-</td>
+                        {% if show_points %}
+                        <td class="col-pts">{{ get_points_str(leader.points) }}</td>
+                        {% endif %}
+                    </tr>
+                    <tr class="gap-row"><td colspan="{{ 5 if show_points else 4 }}"></td></tr>
+                    {% set iterate_rows = table_rows[1:] %}
+                {% else %}
+                    {% set iterate_rows = table_rows %}
+                {% endif %}
+                
+                {% for w in iterate_rows %}
+                <tr>
+                    <td class="col-pos">{{ w.pos }}</td>
+                    <td>
+                        {% set dyn_style = 'style="background: ' ~ (w.color_hex if w.color_hex else '#555') ~ '; border: 1px solid ' ~ (w.color_border_hex if w.color_border_hex else '#555') ~ ';"' %}
+                        <div class="driver-cell">
+                            <div class="color-bar" {{ dyn_style | safe }}></div>
+                            <div class="driver-meta">
+                                <span class="driver-nat">{{ w.nationality }}</span>
+                                <span class="driver-num">#{{ w.number }}</span>
+                            </div>
+                            <div>
+                                <strong class="driver-name">{{ w.discord_name }}</strong>
+                                <span class="team-name">{{ render_driver_team(w) }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="col-time">{{ w.time }}</td>
+                    <td class="col-gap">{{ w.gap }}</td>
+                    {% if show_points %}
+                    <td class="col-pts">{{ get_points_str(w.points) }}</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+</div>
+
+<div class="controls">
+    <button class="btn btn-secondary" onclick="window.close()">← Close Window</button>
+    <button class="btn btn-primary" data-idx="{{ loop.index }}" onclick="downloadPNG(this.getAttribute('data-idx'))">📸 Download Part {{ loop.index }} PNG</button>
+</div>
+{% endfor %}
+
+<div class="controls" style="border-top: 1px solid #383259; padding-top: 20px; margin-bottom: 50px;">
+    <button class="btn btn-primary" style="background: #27ae60;" onclick="downloadAll()">📸 Download All Parts</button>
+</div>
+
+<script>
+function downloadPNG(index) {
+    const el = document.getElementById(`graphic-${index}`);
+    html2canvas(el, { backgroundColor: '#0f0f14', scale: 2 }).then(canvas => {
+        const a = document.createElement('a');
+        a.download = `WRC_Results_Part_${index}.png`;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+    });
+}
+
+function downloadAll() {
+    const appData = document.getElementById('app-data');
+    const partsCount = parseInt(appData.getAttribute('data-pages-count'));
+    
+    let delay = 0;
+    for (let i = 1; i <= partsCount; i++) {
+        setTimeout(() => downloadPNG(i), delay);
+        delay += 600; 
+    }
+}
+</script>
+
+</body>
+</html>

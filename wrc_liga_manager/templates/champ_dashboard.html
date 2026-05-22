@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ champ.name }} - Dashboard{% endblock %}
+{% block content %}
+    <h1 class="page-header">Dashboard: {{ champ.name }}</h1>
+    
+    <div class="card" style="border-top: 4px solid var(--success);">
+        <h2 class="card-title">Welcome to the isolated environment!</h2>
+        <p style="font-size: 1.1rem; margin-bottom: 15px;">
+            Everything you create here (Teams, Drivers, Rallies) belongs <strong>strictly and exclusively</strong> to the <strong>{{ champ.name }}</strong> championship. 
+        </p>
+        <p>Suggested workflow when starting a new season:</p>
+        <ol style="margin-left: 20px; margin-top: 10px; line-height: 1.8;">
+            <li>Create teams in the database (<strong>Teams</strong> tab).</li>
+            <li>Create the rally schedule (<strong>Rallies</strong> tab).</li>
+            <li>Upload a CSV file with results – the program will automatically add new drivers to the database! (<strong>Upload CSV</strong> tab).</li>
+            <li>Edit driver nicknames and assign them to teams (<strong>Drivers</strong> tab).</li>
+            <li>Generate automatically calculated points tables (<strong>Graphics</strong> tab).</li>
+        </ol>
+    </div>
+{% endblock %}

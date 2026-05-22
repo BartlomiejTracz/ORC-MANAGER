@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Drivers - {{ champ.name }}{% endblock %}
+{% block content %}
+    <h1 class="page-header">Driver Management</h1>
+    <div class="card">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th style="width: 60px;">Nat.</th>
+                        <th style="width: 70px;">Num</th>
+                        <th>EA Nickname (Platform)</th>
+                        <th>Display Name</th>
+                        <th>Vehicle (If Privateer)</th>
+                        <th>Team</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in drivers %}
+                    <tr>
+                        <td><strong>{{ d.id }}</strong></td>
+                        <td>
+                            <input type="text" name="nationality" value="{{ d.nationality }}" form="form-edit-{{ d.id }}" style="margin: 0; padding: 6px; text-align: center; font-size: 1.2rem;">
+                        </td>
+                        <td>
+                            <input type="number" name="number" value="{{ d.number }}" form="form-edit-{{ d.id }}" style="margin: 0; padding: 6px; font-weight: bold; text-align: center;">
+                        </td>
+                        <td>
+                            <span style="color: #64748b; font-family: monospace;">{{ d.ea_nickname }}</span><br>
+                            <span style="font-size: 0.75rem; background: #e2e8f0; color: #1a1a2e; padding: 2px 6px; border-radius: 4px;">{{ d.platform if d.platform else 'Unknown' }}</span>
+                        </td>
+                        <td><input type="text" name="discord_name" value="{{ d.discord_name }}" form="form-edit-{{ d.id }}" style="margin: 0; font-weight: 600;"></td>
+                        <td>
+                            <input type="text" name="car" value="{{ d.car }}" form="form-edit-{{ d.id }}" style="margin: 0; padding: 6px; font-size: 0.9rem;" placeholder="e.g. Ford Fiesta">
+                        </td>
+                        <td>
+                            <select name="team_id" form="form-edit-{{ d.id }}" style="margin: 0;">
+                                <option value="0">-- Privateer --</option>
+                                {% for t in teams %}
+                                <option value="{{ t.id }}" {% if d.team_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                <form id="form-edit-{{ d.id }}" action="/c/{{ champ.id }}/update_driver/{{ d.id }}" method="POST" style="margin:0;">
+                                    <button type="submit" class="btn btn-success" style="padding: 8px 12px; font-size: 0.9rem;">Save</button>
+                                </form>
+                                <form action="/c/{{ champ.id }}/delete_driver/{{ d.id }}" method="POST" onsubmit="return confirm('Delete driver permanently?');" style="margin:0;">
+                                    <button type="submit" class="btn btn-danger" style="padding: 8px 12px; font-size: 0.9rem;">Del</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

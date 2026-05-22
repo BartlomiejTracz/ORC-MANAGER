@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Import Results - {{ champ.name }}{% endblock %}
+{% block content %}
+    <h1 class="page-header">Upload Results</h1>
+    <div class="card" style="border-top: 4px solid #e67e22;">
+        <form action="/c/{{ champ.id }}/upload_csv" method="POST" enctype="multipart/form-data">
+            <label style="font-size: 1.1rem; color: var(--nav-bg);">Select a Rally from the current Championship:</label>
+            <select id="rally_select" name="rally_id" onchange="loadStageList()" required style="background: #f8fafc; font-weight: bold; padding: 12px;">
+                <option value="">-- Select a Rally --</option>
+                {% for r in rallies %}<option value="{{ r.id }}" data-stages="{{ r.stages_count }}">{{ r.name }}</option>{% endfor %}
+            </select>
+            <div id="stages_list_container" style="margin-top: 30px; display: none;">
+                <div class="table-responsive">
+                    <table style="min-width: 800px;">
+                        <thead><tr><th>Special Stage</th><th>CSV File</th><th>Status</th></tr></thead>
+                        <tbody id="stages_tbody"></tbody>
+                    </table>
+                </div>
+                <button type="submit" class="btn btn-success btn-block" style="margin-top: 25px; padding: 18px; font-size: 1.3rem;">🚀 Save to database</button>
+            </div>
+        </form>
+    </div>
+    <script>
+        function loadStageList() {
+            const select = document.getElementById("rally_select");
+            const tbody = document.getElementById("stages_tbody");
+            tbody.innerHTML = ""; 
+            if (!select.value) { document.getElementById("stages_list_container").style.display = "none"; return; }
+            document.getElementById("stages_list_container").style.display = "block";
+            const stagesCount = parseInt(select.options[select.selectedIndex].getAttribute("data-stages"));
+            tbody.innerHTML += createRow(0, "🏆 Overall Standings", "#fffbeb", "Upload 'Overall_Leaderboard.csv'");
+            for(let i = 1; i < stagesCount; i++) { tbody.innerHTML += createRow(i, `🏁 Stage ${i}`, "#ffffff", "Upload results"); }
+            tbody.innerHTML += createRow(stagesCount, `⭐ Powerstage (Stage ${stagesCount})`, "#fef2f2", "Upload the last stage file");
+        }
+        function createRow(stageNum, label, bgColor, placeholder) {
+            return `<tr style="background-color: ${bgColor};">
+                <td style="font-weight: 700; font-size: 1.1rem;">${label}</td>
+                <td><input type="file" name="file_${stageNum}" id="file_${stageNum}" accept=".csv" onchange="updateStatus(${stageNum})" style="margin: 0; padding: 8px;"></td>
+                <td id="status_${stageNum}" style="font-weight: 600; color: #94a3b8;">${placeholder}</td>
+            </tr>`;
+        }
+        function updateStatus(stageNum) {
+            const f = document.getElementById(`file_${stageNum}`);
+            const s = document.getElementById(`status_${stageNum}`);
+            if (f.files.length > 0) { s.innerHTML = `✅ Ready: ${f.files[0].name}`; s.style.color = "#27ae60"; } 
+            else { s.innerHTML = `No file`; s.style.color = "#e74c3c"; }
+        }
+    </script>
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Database View - WRC Manager{% endblock %}
+{% block content %}
+    <h1 class="page-header">🗂️ Raw Database Tables View</h1>
+    <p style="margin-bottom: 25px; color: #64748b;">Technical preview of database contents. Useful for verifying operations and debugging.</p>
+
+    <div class="card" style="padding: 15px; margin-bottom: 30px; background: #e2e8f0;">
+        <strong style="margin-right: 15px; text-transform: uppercase; font-size: 0.9rem; color: #475569;">Jump to table:</strong>
+        <a href="#t-seasons" style="margin-right: 15px; font-weight: bold; color: #2c3e50; text-decoration: none;">[1] Seasons</a>
+        <a href="#t-rallies" style="margin-right: 15px; font-weight: bold; color: #2c3e50; text-decoration: none;">[2] Rallies</a>
+        <a href="#t-teams" style="margin-right: 15px; font-weight: bold; color: #2c3e50; text-decoration: none;">[3] Teams</a>
+        <a href="#t-drivers" style="margin-right: 15px; font-weight: bold; color: #2c3e50; text-decoration: none;">[4] Drivers</a>
+        <a href="#t-results" style="font-weight: bold; color: #2c3e50; text-decoration: none;">[5] Results (Last 200)</a>
+    </div>
+
+    <div class="card" id="t-seasons" style="margin-bottom: 40px;">
+        <h2 class="card-title" style="color: #3498db;">Table: `seasons`</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">id (PK)</th>
+                        <th>name (TEXT)</th>
+                        <th>is_active (INT)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in seasons %}
+                    <tr>
+                        <td><strong>{{ s.id }}</strong></td>
+                        <td>{{ s.name }}</td>
+                        <td><code>{{ s.is_active }}</code></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" style="text-align: center; color: #aaa;">Table is empty.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" id="t-rallies" style="margin-bottom: 40px;">
+        <h2 class="card-title" style="color: #27ae60;">Table: `rallies`</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">id (PK)</th>
+                        <th style="width: 120px;">season_id (FK)</th>
+                        <th>name (TEXT)</th>
+                        <th>stages_count (INT)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rallies %}
+                    <tr>
+                        <td><strong>{{ r.id }}</strong></td>
+                        <td><code>{{ r.season_id }}</code></td>
+                        <td><strong>{{ r.name }}</strong></td>
+                        <td>{{ r.stages_count }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" style="text-align: center; color: #aaa;">Table is empty.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" id="t-teams" style="margin-bottom: 40px;">
+        <h2 class="card-title" style="color: #9b59b6;">Table: `teams`</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">id (PK)</th>
+                        <th>name (TEXT)</th>
+                        <th>car (TEXT)</th>
+                        <th>color_hex (TEXT)</th>
+                        <th>color_border_hex (TEXT)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in teams %}
+                    <tr>
+                        <td><strong>{{ t.id }}</strong></td>
+                        <td><strong>{{ t.name }}</strong></td>
+                        <td>{{ t.car }}</td>
+                        <td><code>{{ t.color_hex }}</code></td>
+                        <td><code>{{ t.color_border_hex }}</code></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="text-align: center; color: #aaa;">Table is empty.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" id="t-drivers" style="margin-bottom: 40px;">
+        <h2 class="card-title" style="color: #f1c40f;">Table: `drivers`</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">id (PK)</th>
+                        <th>discord_name (TEXT)</th>
+                        <th>ea_nickname (TEXT)</th>
+                        <th>team_id (FK)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in drivers %}
+                    <tr>
+                        <td><strong>{{ d.id }}</strong></td>
+                        <td><strong>{{ d.discord_name }}</strong></td>
+                        <td style="font-family: monospace;">{{ d.ea_nickname }}</td>
+                        <td><code>{{ d.team_id if d.team_id else 'NULL' }}</code></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" style="text-align: center; color: #aaa;">Table is empty.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" id="t-results" style="margin-bottom: 40px;">
+        <h2 class="card-title" style="color: #e74c3c;">Table: `stage_results` (Last 200 entries)</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">id (PK)</th>
+                        <th>rally_id (Rally)</th>
+                        <th>driver_id (Driver)</th>
+                        <th>stage_number (INT)</th>
+                        <th>time_ms (INT)</th>
+                        <th>stage_rank (INT)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for res in stage_results %}
+                    <tr>
+                        <td><strong>{{ res.id }}</strong></td>
+                        <td>{{ res.rally_name }}</td>
+                        <td><strong>{{ res.discord_name }}</strong></td>
+                        <td><code>SS {{ res.stage_number }}</code></td>
+                        <td style="font-family: monospace; font-weight: bold;">{{ res.time_ms }} ms</td>
+                        <td><span style="background: #eee; padding: 2px 6px; border-radius: 4px;">Pos. {{ res.stage_rank }}</span></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" style="text-align: center; color: #aaa;">Table is empty. Upload CSV files to see records.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
