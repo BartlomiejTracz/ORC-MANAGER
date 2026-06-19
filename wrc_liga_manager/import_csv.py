@@ -44,8 +44,8 @@ def import_racenet_results(csv_file, rally_id, stage_number):
         ea_nick = str(row['DisplayName']).strip()
         time_text = str(row['Time']).strip()
         
-        # Skip empty rows
-        if ea_nick == "nan" or time_text == "nan":
+        # ZABEZPIECZENIE: Pomijamy puste rzędy oraz graczy z ukrytym udostępnianiem ("Wrc Player")
+        if ea_nick.lower() == "nan" or time_text.lower() == "nan" or ea_nick.lower() == "wrc player":
             continue
 
         # Look for the driver's ID in the database

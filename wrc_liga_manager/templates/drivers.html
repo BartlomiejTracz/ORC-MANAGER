@@ -2,14 +2,18 @@
 {% block title %}Drivers - {{ champ.name }}{% endblock %}
 {% block content %}
     <h1 class="page-header">Driver Management</h1>
+
+    <div style="margin-bottom: 20px;">
+        <input type="text" id="driverSearch" onkeyup="filterDrivers()" placeholder="🔍 Search driver (nickname, team, car, country)..." style="width: 100%; padding: 14px; font-size: 1.1rem; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box; background-color: #f8fafc; color: #0f172a;">
+    </div>
+
     <div class="card">
         <div class="table-responsive">
-            <table>
+            <table id="driversTable">
                 <thead>
                     <tr>
                         <th style="width: 50px;">ID</th>
-                        <th style="width: 60px;">Nat.</th>
-                        <th style="width: 70px;">Num</th>
+                        <th style="width: 160px;">Nationality</th>
                         <th>EA Nickname (Platform)</th>
                         <th>Display Name</th>
                         <th>Vehicle (If Privateer)</th>
@@ -18,38 +22,72 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {% set flags = [
+                        ('⬜', 'Neutral'),
+                        ('🇦🇷', 'Argentina'), ('🇦🇺', 'Australia'), ('🇦🇹', 'Austria'),
+                        ('🇧🇪', 'Belgium'), ('🇧🇴', 'Bolivia'), ('🇧🇷', 'Brazil'), ('🇧🇬', 'Bulgaria'),
+                        ('🇨🇦', 'Canada'), ('🇨🇱', 'Chile'), ('🇨🇳', 'China'), ('🇨🇴', 'Colombia'), ('🇨🇷', 'Costa Rica'), ('🇭🇷', 'Croatia'), ('🇨🇾', 'Cyprus'), ('🇨🇿', 'Czech Republic'),
+                        ('🇩🇰', 'Denmark'),
+                        ('🇪🇨', 'Ecuador'), ('🇪🇬', 'Egypt'), ('🇪🇪', 'Estonia'),
+                        ('🇫🇮', 'Finland'), ('🇫🇷', 'France'),
+                        ('🇩🇪', 'Germany'), ('🇬🇷', 'Greece'),
+                        ('🇭🇺', 'Hungary'),
+                        ('🇮🇸', 'Iceland'), ('🇮🇳', 'India'), ('🇮🇩', 'Indonesia'), ('🇮🇪', 'Ireland'), ('🇮🇹', 'Italy'),
+                        ('🇯🇵', 'Japan'),
+                        ('🇰🇪', 'Kenya'),
+                        ('🇱🇻', 'Latvia'), ('🇱🇹', 'Lithuania'), ('🇱🇺', 'Luxembourg'),
+                        ('🇲🇾', 'Malaysia'), ('🇲🇽', 'Mexico'), ('🇲🇨', 'Monaco'), ('🇲🇦', 'Morocco'),
+                        ('🇳🇱', 'Netherlands'), ('🇳🇿', 'New Zealand'), ('🇳🇴', 'Norway'),
+                        ('🇵🇾', 'Paraguay'), ('🇵🇪', 'Peru'), ('🇵🇱', 'Poland'), ('🇵🇹', 'Portugal'),
+                        ('🇶🇦', 'Qatar'),
+                        ('🇷🇴', 'Romania'), ('🇷🇼', 'Rwanda'),
+                        ('🇸🇦', 'Saudi Arabia'), ('🇷🇸', 'Serbia'), ('🇸🇰', 'Slovakia'), ('🇸🇮', 'Slovenia'), ('🇿🇦', 'South Africa'), ('🇰🇷', 'South Korea'), ('🇪🇸', 'Spain'), ('🇸🇪', 'Sweden'), ('🇨🇭', 'Switzerland'),
+                        ('🇹🇼', 'Taiwan'), ('🇹🇭', 'Thailand'), ('🇹🇷', 'Turkey'),
+                        ('🇺🇦', 'Ukraine'), ('🇦🇪', 'United Arab Emirates'), ('🇬🇧', 'United Kingdom'), ('🇺🇸', 'United States'), ('🇺🇾', 'Uruguay'),
+                        ('🇻🇪', 'Venezuela'),
+                        ('🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'England'), ('🏴󠁧󠁢󠁳󠁣󠁴󠁿', 'Scotland'), ('🏴󠁧󠁢󠁷󠁬󠁳󠁿', 'Wales')
+                    ] %}
                     {% for d in drivers %}
                     <tr>
-                        <td><strong>{{ d.id }}</strong></td>
+                        <td style="vertical-align: middle;"><strong>{{ d.id }}</strong></td>
+                        
                         <td>
-                            <input type="text" name="nationality" value="{{ d.nationality }}" form="form-edit-{{ d.id }}" style="margin: 0; padding: 6px; text-align: center; font-size: 1.2rem;">
+                            <select name="nationality" form="form-edit-{{ d.id }}" style="margin: 0; padding: 8px; font-size: 1rem; border-radius: 5px; border: 1px solid #ccc; width: 100%; box-sizing: border-box;">
+                                {% for f_emoji, f_name in flags %}
+                                    <option value="{{ f_emoji }}" {% if d.nationality == f_emoji %}selected{% endif %}>{{ f_emoji }} {{ f_name }}</option>
+                                {% endfor %}
+                            </select>
                         </td>
-                        <td>
-                            <input type="number" name="number" value="{{ d.number }}" form="form-edit-{{ d.id }}" style="margin: 0; padding: 6px; font-weight: bold; text-align: center;">
+                        
+                        <td style="vertical-align: middle;">
+                            <span style="color: #64748b; font-family: monospace; font-size: 1.05rem;">{{ d.ea_nickname }}</span><br>
+                            <span style="font-size: 0.75rem; background: #e2e8f0; color: #1a1a2e; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px;">{{ d.platform if d.platform else 'Unknown' }}</span>
                         </td>
+                        
                         <td>
-                            <span style="color: #64748b; font-family: monospace;">{{ d.ea_nickname }}</span><br>
-                            <span style="font-size: 0.75rem; background: #e2e8f0; color: #1a1a2e; padding: 2px 6px; border-radius: 4px;">{{ d.platform if d.platform else 'Unknown' }}</span>
+                            <input type="text" name="discord_name" value="{{ d.discord_name }}" form="form-edit-{{ d.id }}" style="margin: 0; padding: 8px; font-weight: 600; border-radius: 5px; border: 1px solid #ccc; width: 100%; min-width: 160px; box-sizing: border-box;">
                         </td>
-                        <td><input type="text" name="discord_name" value="{{ d.discord_name }}" form="form-edit-{{ d.id }}" style="margin: 0; font-weight: 600;"></td>
+                        
                         <td>
-                            <input type="text" name="car" value="{{ d.car }}" form="form-edit-{{ d.id }}" style="margin: 0; padding: 6px; font-size: 0.9rem;" placeholder="e.g. Ford Fiesta">
+                            <input type="text" name="car" value="{{ d.car }}" form="form-edit-{{ d.id }}" style="margin: 0; padding: 8px; font-size: 0.95rem; border-radius: 5px; border: 1px solid #ccc; width: 100%; min-width: 160px; box-sizing: border-box;" placeholder="e.g. Ford Puma Rally1">
                         </td>
+                        
                         <td>
-                            <select name="team_id" form="form-edit-{{ d.id }}" style="margin: 0;">
+                            <select name="team_id" form="form-edit-{{ d.id }}" style="margin: 0; padding: 8px; border-radius: 5px; border: 1px solid #ccc; width: 100%; min-width: 150px; box-sizing: border-box;">
                                 <option value="0">-- Privateer --</option>
                                 {% for t in teams %}
                                 <option value="{{ t.id }}" {% if d.team_id == t.id %}selected{% endif %}>{{ t.name }}</option>
                                 {% endfor %}
                             </select>
                         </td>
-                        <td>
+                        
+                        <td style="vertical-align: middle;">
                             <div style="display: flex; gap: 8px; justify-content: flex-end;">
                                 <form id="form-edit-{{ d.id }}" action="/c/{{ champ.id }}/update_driver/{{ d.id }}" method="POST" style="margin:0;">
-                                    <button type="submit" class="btn btn-success" style="padding: 8px 12px; font-size: 0.9rem;">Save</button>
+                                    <button type="submit" class="btn btn-success" style="padding: 10px 16px; font-size: 0.9rem; font-weight: bold; border-radius: 5px;">Save</button>
                                 </form>
                                 <form action="/c/{{ champ.id }}/delete_driver/{{ d.id }}" method="POST" onsubmit="return confirm('Delete driver permanently?');" style="margin:0;">
-                                    <button type="submit" class="btn btn-danger" style="padding: 8px 12px; font-size: 0.9rem;">Del</button>
+                                    <button type="submit" class="btn btn-danger" style="padding: 10px 16px; font-size: 0.9rem; font-weight: bold; border-radius: 5px;">Del</button>
                                 </form>
                             </div>
                         </td>
@@ -59,4 +97,36 @@
             </table>
         </div>
     </div>
+
+    <script>
+    function filterDrivers() {
+        let input = document.getElementById("driverSearch");
+        let filter = input.value.toLowerCase();
+        let table = document.getElementById("driversTable");
+        let tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) {
+            // Collect text from inputs, selects and standard text inside the row
+            let inputs = tr[i].querySelectorAll('input, select');
+            let rowText = tr[i].innerText.toLowerCase();
+            
+            inputs.forEach(el => {
+                if(el.tagName.toLowerCase() === 'select') {
+                    // Append visible text of the selected option (e.g. country name or team name)
+                    rowText += " " + el.options[el.selectedIndex].text.toLowerCase();
+                } else {
+                    // Append value of text inputs
+                    rowText += " " + el.value.toLowerCase();
+                }
+            });
+
+            // If query is found in the rowText, show the row, otherwise hide
+            if (rowText.indexOf(filter) > -1) {
+                tr[i].style.display = "";
+            } else {
+                tr[i].style.display = "none";
+            }
+        }
+    }
+    </script>
 {% endblock %}

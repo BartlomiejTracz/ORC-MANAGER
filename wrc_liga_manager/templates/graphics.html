@@ -26,7 +26,11 @@
         <div class="card" style="border-top: 4px solid var(--success);">
             <h2 class="card-title">Championship Standings</h2>
             <p style="margin-bottom: 15px; color: #64748b;">Generates the overall season points table.</p>
-            <a href="/c/{{ champ.id }}/render/championship" target="_blank" class="btn btn-success btn-block" style="padding: 12px;">🏆 Championship Table</a>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <a href="/c/{{ champ.id }}/render/championship" target="_blank" class="btn btn-success btn-block" style="padding: 12px; text-align: center; text-decoration: none;">🏆 Drivers Championship</a>
+                <a href="/c/{{ champ.id }}/render/teams" target="_blank" class="btn btn-primary btn-block" style="padding: 12px; text-align: center; text-decoration: none; background-color: #8e44ad; border-color: #8e44ad;">👥 Teams Championship (All Teams)</a>
+                <a href="/c/{{ champ.id }}/render/constructors" target="_blank" class="btn btn-primary btn-block" style="padding: 12px; text-align: center; text-decoration: none; background-color: #d35400; border-color: #d35400;">🏭 Constructors Standings (Factory Only)</a>
+            </div>
         </div>
     </div>
 {% endblock %}

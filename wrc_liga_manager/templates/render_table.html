@@ -8,13 +8,33 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Barlow', sans-serif; background: #0b0a12; color: white; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; min-height: 100vh; }
-        .gfx-page { width: 850px; max-width: 100%; margin-bottom: 20px; position: relative; }
+        body { font-family: 'Barlow', sans-serif; background: #131220; color: white; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; min-height: 100vh; }
         
-        .gfx-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; border-bottom: 2px solid #a87ffb; padding: 10px 0 16px 0; width: 850px; }
-        .gfx-header h1 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #fff; flex: 1; }
+        /* Zmieniony kontener główny grafiki - większe marginesy wewnętrzne */
+        .gfx-page { 
+            width: 950px; /* 850px na treść + 2x 50px na marginesy */
+            padding: 50px; 
+            background: #0b0a12; /* Tło renderowane na PNG */
+            margin-bottom: 30px; 
+            position: relative; 
+            box-sizing: border-box;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 8px; /* Zaokrąglenie tylko dla podglądu, PNG i tak utnie krawędzie jeśli tło jest ciemne */
+        }
         
-        .podium-container { width: 850px; display: flex; align-items: flex-end; justify-content: center; gap: 15px; margin-bottom: 25px; height: 350px; }
+        /* Kontener na Logo */
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            width: 850px;
+        }
+        
+        .gfx-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; border-bottom: 2px solid #a87ffb; padding: 10px 0 16px 0; width: 850px; }
+        .gfx-header h1 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.8rem; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #fff; flex: 1; text-align: center; }
+        
+        .podium-container { width: 850px; display: flex; align-items: flex-end; justify-content: center; gap: 15px; margin-bottom: 30px; height: 350px; }
         .podium-place { position: relative; width: 260px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; }
         .podium-card-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.85; z-index: 1; }
         .podium-content { position: relative; z-index: 2; padding: 20px; display: flex; flex-direction: column; height: 100%; color: white; flex: 1; }
@@ -26,11 +46,9 @@
         .podium-pos { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 5.5rem; line-height: 0.8; opacity: 0.25; position: absolute; top: -5px; right: 10px; color: #ffffff; }
         .podium-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
         .podium-nat { font-size: 1.8rem; }
-        .podium-num { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 1.2rem; background: #2a1f42; padding: 2px 8px; border-radius: 4px; color: white; min-width: 35px; text-align: center; border: 1px solid #a87ffb; }
         
         .podium-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         .podium-team { font-size: 0.85rem; color: rgba(220,200,255,0.8); margin-bottom: 20px; flex: 1; line-height: 1.3; }
-        .factory-badge { background: #f1c40f; color: #000; font-size: 0.65rem; padding: 2px 5px; border-radius: 3px; font-weight: bold; margin-right: 5px; vertical-align: middle; }
         
         .podium-points { margin-top: auto; border-top: 1px solid rgba(168,127,251,0.4); padding-top: 10px; display: flex; justify-content: space-between; align-items: center; }
         .p-pts-lbl { font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; color: rgba(200,180,255,0.8); }
@@ -42,7 +60,7 @@
         .gfx-table td { padding: 11px 10px; border-bottom: 1px solid #1e1d33; background: #131220; }
         
         tr.leader-row td { background: #1f1b35 !important; border-bottom: 2px solid #a87ffb; }
-        tr.gap-row td { height: 10px; padding: 0; background: #0b0a12 !important; border: none; }
+        tr.gap-row td { height: 10px; padding: 0; background: transparent !important; border: none; }
         .gfx-table tr:last-child td { border-bottom: none; }
 
         .col-pos { width: 36px; text-align: center; font-family: 'Barlow Condensed', sans-serif; font-size: 1.3rem; font-weight: 900; color: #c299ff; }
@@ -53,14 +71,13 @@
         
         .driver-meta { display: flex; align-items: center; gap: 8px; margin-right: 4px; }
         .driver-nat { font-size: 1.2rem; }
-        .driver-num { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 0.95rem; background: #2a1f42; padding: 2px 6px; border-radius: 4px; color: white; min-width: 28px; text-align: center; border: 1px solid #a87ffb; }
         
         .driver-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 700; color: #fff; letter-spacing: 0.5px; display: block; }
         .team-name { font-size: 0.75rem; color: #8c89a8; margin-top: 2px; display: block; }
         .col-time { text-align: right; font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 700; color: #fff; }
         .col-gap  { text-align: right; font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; color: #c299ff; }
         
-        .controls { margin-top: 20px; margin-bottom: 40px; display: flex; flex-wrap: wrap; gap: 12px; width: 850px; justify-content: flex-end; }
+        .controls { margin-top: 10px; margin-bottom: 40px; display: flex; flex-wrap: wrap; gap: 12px; width: 950px; justify-content: flex-end; }
         .btn { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1rem; letter-spacing: 1px; text-transform: uppercase; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; color: white; transition: opacity 0.2s; }
         .btn:hover { opacity: 0.85; } .btn-primary { background: #a87ffb; } .btn-secondary { background: #231f38; border: 1px solid #383259; }
     </style>
@@ -74,12 +91,16 @@
 {%- endmacro %}
 
 {% macro render_driver_team(w) %}
-    {% if w.is_factory %}<span class="factory-badge">FACTORY</span>{% endif %}
     {{ w.team_name if w.team_name else 'Privateer' }} <span style="opacity: 0.5; margin: 0 4px;">|</span> {{ w.display_car }}
 {% endmacro %}
 
 {% for page in pages %}
 <div class="gfx-page" id="graphic-{{ loop.index }}">
+    
+    <div class="logo-container">
+        <img src="/assets/ORC_LOGO.png" alt="ORC Logo" style="max-height: 120px; width: auto; object-fit: contain;" onerror="this.style.display='none'">
+    </div>
+
     <div class="gfx-header">
         <h1>{{ title }} - Part {{ loop.index }}</h1>
     </div>
@@ -99,7 +120,6 @@
                     <span class="podium-pos">2</span>
                     <div class="podium-meta">
                         <span class="podium-nat">{{ d2.nationality }}</span>
-                        <span class="podium-num">#{{ d2.number }}</span>
                     </div>
                     <strong class="podium-name">{{ d2.discord_name }}</strong>
                     <span class="podium-team">{{ render_driver_team(d2) }}</span>
@@ -118,7 +138,6 @@
                     <span class="podium-pos">1</span>
                     <div class="podium-meta">
                         <span class="podium-nat">{{ d1.nationality }}</span>
-                        <span class="podium-num">#{{ d1.number }}</span>
                     </div>
                     <strong class="podium-name">{{ d1.discord_name }}</strong>
                     <span class="podium-team">{{ render_driver_team(d1) }}</span>
@@ -137,7 +156,6 @@
                     <span class="podium-pos">3</span>
                     <div class="podium-meta">
                         <span class="podium-nat">{{ d3.nationality }}</span>
-                        <span class="podium-num">#{{ d3.number }}</span>
                     </div>
                     <strong class="podium-name">{{ d3.discord_name }}</strong>
                     <span class="podium-team">{{ render_driver_team(d3) }}</span>
@@ -178,7 +196,6 @@
                                 <div class="color-bar" {{ leader_style | safe }}></div>
                                 <div class="driver-meta">
                                     <span class="driver-nat">{{ leader.nationality }}</span>
-                                    <span class="driver-num">#{{ leader.number }}</span>
                                 </div>
                                 <div>
                                     <strong class="driver-name">{{ leader.discord_name }}</strong>
@@ -207,7 +224,6 @@
                             <div class="color-bar" {{ dyn_style | safe }}></div>
                             <div class="driver-meta">
                                 <span class="driver-nat">{{ w.nationality }}</span>
-                                <span class="driver-num">#{{ w.number }}</span>
                             </div>
                             <div>
                                 <strong class="driver-name">{{ w.discord_name }}</strong>
@@ -242,9 +258,10 @@
 <script>
 function downloadPNG(index) {
     const el = document.getElementById(`graphic-${index}`);
-    html2canvas(el, { backgroundColor: '#0f0f14', scale: 2 }).then(canvas => {
+    // Ustawienie tła przy pobieraniu żeby ramki i marginesy były dobrze widoczne
+    html2canvas(el, { backgroundColor: '#0b0a12', scale: 2 }).then(canvas => {
         const a = document.createElement('a');
-        a.download = `WRC_Results_Part_${index}.png`;
+        a.download = `ORC_Results_Part_${index}.png`;
         a.href = canvas.toDataURL('image/png');
         a.click();
     });

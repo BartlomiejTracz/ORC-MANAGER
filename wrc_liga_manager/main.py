@@ -9,6 +9,7 @@ import json
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
+# Fallback defaults (w razie gdyby coś poszło nie tak)
 WRC_POINTS = [50, 40, 34, 30, 27, 24, 21, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2, 1]
 PS_POINTS = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1] 
 
@@ -19,15 +20,46 @@ def get_db_connection():
     
     try:
         conn.execute("ALTER TABLE teams ADD COLUMN is_factory INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE drivers ADD COLUMN car TEXT DEFAULT ''")
-        conn.commit()
     except sqlite3.OperationalError:
         pass 
-        
+    try:
+        conn.execute("ALTER TABLE drivers ADD COLUMN car TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+
+    conn.execute('''CREATE TABLE IF NOT EXISTS point_systems (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT,
+                        wrc_points TEXT,
+                        ps_points TEXT)''')
+    
+    if not conn.execute("SELECT 1 FROM point_systems").fetchone():
+        default_wrc = "50,40,34,30,27,24,21,19,17,15,13,11,9,7,6,5,4,3,2,1"
+        default_ps = "10,9,8,7,6,5,4,3,2,1"
+        conn.execute("INSERT INTO point_systems (name, wrc_points, ps_points) VALUES (?, ?, ?)",
+                     ("Default WRC 2024", default_wrc, default_ps))
+    
+    try:
+        conn.execute("ALTER TABLE championships ADD COLUMN point_system_id INTEGER DEFAULT 1")
+    except sqlite3.OperationalError:
+        pass
+
+    conn.commit()
     return conn
 
 def get_champ(conn, champ_id):
     return conn.execute("SELECT * FROM championships WHERE id = ?", (champ_id,)).fetchone()
+
+def get_points_for_champ(conn, champ_id):
+    champ = get_champ(conn, champ_id)
+    ps_id = champ['point_system_id'] if 'point_system_id' in champ.keys() else 1
+    ps = conn.execute("SELECT * FROM point_systems WHERE id = ?", (ps_id,)).fetchone()
+    
+    if ps:
+        wrc = [int(p.strip()) for p in ps['wrc_points'].split(',') if p.strip()]
+        ps_pts = [int(p.strip()) for p in ps['ps_points'].split(',') if p.strip()]
+        return wrc, ps_pts
+    return WRC_POINTS, PS_POINTS
 
 def format_time(ms):
     if ms == 0: return "DNF"
@@ -47,19 +79,29 @@ def parse_racenet_time(time_str):
         return (int(h) * 3600000) + (int(m) * 60000) + (int(s) * 1000) + int(fractions)
     except Exception: return 0
 
-# ================= 1. MAIN CHAMPIONSHIP PANEL =================
+# ================= 1. MAIN CHAMPIONSHIP PANEL & POINT SYSTEMS =================
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     conn = get_db_connection()
-    champs = conn.execute("SELECT * FROM championships ORDER BY id DESC").fetchall()
+    champs = conn.execute("SELECT c.*, p.name as ps_name FROM championships c LEFT JOIN point_systems p ON c.point_system_id = p.id ORDER BY c.id DESC").fetchall()
+    point_systems = conn.execute("SELECT * FROM point_systems ORDER BY id ASC").fetchall()
     conn.close()
-    return templates.TemplateResponse(request=request, name="index.html", context={"request": request, "champs": champs, "champ": None})
+    return templates.TemplateResponse(request=request, name="index.html", context={
+        "request": request, "champs": champs, "champ": None, "point_systems": point_systems
+    })
 
 @app.post("/add_championship")
-def add_champ(name: str = Form(...)):
+def add_champ(name: str = Form(...), point_system_id: int = Form(1)):
     conn = get_db_connection()
-    conn.execute("INSERT INTO championships (name) VALUES (?)", (name,))
+    conn.execute("INSERT INTO championships (name, point_system_id) VALUES (?, ?)", (name, point_system_id))
+    conn.commit(); conn.close()
+    return RedirectResponse(url="/", status_code=303)
+
+@app.post("/update_championship_points/{champ_id}")
+def update_champ_pts(champ_id: int, point_system_id: int = Form(...)):
+    conn = get_db_connection()
+    conn.execute("UPDATE championships SET point_system_id = ? WHERE id = ?", (point_system_id, champ_id))
     conn.commit(); conn.close()
     return RedirectResponse(url="/", status_code=303)
 
@@ -68,6 +110,22 @@ def del_champ(champ_id: int):
     conn = get_db_connection()
     conn.execute("DELETE FROM championships WHERE id = ?", (champ_id,))
     conn.commit(); conn.close()
+    return RedirectResponse(url="/", status_code=303)
+
+@app.post("/add_point_system")
+def add_ps(name: str = Form(...), wrc_points: str = Form(...), ps_points: str = Form(...)):
+    conn = get_db_connection()
+    conn.execute("INSERT INTO point_systems (name, wrc_points, ps_points) VALUES (?, ?, ?)", (name, wrc_points, ps_points))
+    conn.commit(); conn.close()
+    return RedirectResponse(url="/", status_code=303)
+
+@app.post("/delete_point_system/{ps_id}")
+def del_ps(ps_id: int):
+    conn = get_db_connection()
+    if ps_id != 1: 
+        conn.execute("DELETE FROM point_systems WHERE id = ?", (ps_id,))
+        conn.commit()
+    conn.close()
     return RedirectResponse(url="/", status_code=303)
 
 # ================= 2. INNER WORKSPACE VIEWS =================
@@ -142,7 +200,7 @@ async def upload_csv(request: Request, champ_id: int):
                 rank_val = row.get('Rank', 999)
                 rank_val = int(rank_val) if not pd.isna(rank_val) else 999
                 
-                if not ea_nick or ea_nick == "nan": continue
+                if not ea_nick or ea_nick.lower() == "nan" or ea_nick.lower() == "wrc player": continue
                 
                 cursor.execute("SELECT id, car FROM drivers WHERE ea_nickname = ? AND champ_id = ?", (ea_nick, champ_id))
                 res = cursor.fetchone()
@@ -168,6 +226,15 @@ def add_r(champ_id: int, name: str=Form(...), stages_count: int=Form(...)):
 @app.post("/c/{champ_id}/add_team")
 def add_t(champ_id: int, name: str=Form(...), car: str=Form(...), color_hex: str=Form(...), color_border_hex: str=Form(...), is_factory: bool=Form(False)):
     conn=get_db_connection(); conn.execute("INSERT INTO teams (champ_id, name, car, color_hex, color_border_hex, is_factory) VALUES (?,?,?,?,?,?)", (champ_id, name,car,color_hex,color_border_hex, int(is_factory))); conn.commit(); return RedirectResponse(f"/c/{champ_id}/teams", 303)
+
+@app.post("/c/{champ_id}/update_team/{team_id}")
+def update_team(champ_id: int, team_id: int, name: str=Form(...), car: str=Form(...), color_hex: str=Form(...), color_border_hex: str=Form(...), is_factory: bool=Form(False)):
+    conn = get_db_connection()
+    conn.execute("UPDATE teams SET name=?, car=?, color_hex=?, color_border_hex=?, is_factory=? WHERE id=? AND champ_id=?", 
+                 (name, car, color_hex, color_border_hex, int(is_factory), team_id, champ_id))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(f"/c/{champ_id}/teams", 303)
 
 @app.post("/c/{champ_id}/update_driver/{d_id}")
 def update_d(champ_id: int, d_id: int, discord_name: str=Form(...), team_id: int=Form(...), nationality: str=Form(...), car: str=Form("")):
@@ -216,10 +283,36 @@ def build_graphic_dict(r, leader_time=None, pts=0):
     w['points'] = pts
     return w
 
+# NOWOŚĆ: Funkcja zliczająca punkty wszystkich kierowców (żeby nie kopiować kodu)
+def calculate_driver_points(conn, champ_id):
+    rallies = conn.execute("SELECT id, stages_count FROM rallies WHERE champ_id=?", (champ_id,)).fetchall()
+    wrc_pts_list, ps_pts_list = get_points_for_champ(conn, champ_id)
+    driver_points = {}
+    for r in rallies:
+        r_id = r['id']
+        has_overall = conn.execute("SELECT COUNT(*) as c FROM stage_results WHERE rally_id=? AND stage_number=0", (r_id,)).fetchone()['c']
+        if has_overall > 0:
+            gen = conn.execute("SELECT driver_id FROM stage_results WHERE rally_id=? AND stage_number=0 ORDER BY stage_rank ASC", (r_id,)).fetchall()
+        else:
+            max_stages = conn.execute("SELECT MAX(c) as max_c FROM (SELECT COUNT(stage_number) as c FROM stage_results WHERE rally_id=? AND stage_number>0 GROUP BY driver_id)", (r_id,)).fetchone()['max_c'] or 0
+            if max_stages > 0:
+                gen = conn.execute("SELECT driver_id, SUM(time_ms) as t FROM stage_results WHERE rally_id=? AND stage_number>0 GROUP BY driver_id HAVING COUNT(stage_number) = ? AND MIN(time_ms) > 0 ORDER BY t ASC", (r_id, max_stages)).fetchall()
+            else:
+                gen = []
+        for i, row in enumerate(gen):
+            if i < len(wrc_pts_list): driver_points[row['driver_id']] = driver_points.get(row['driver_id'], 0) + wrc_pts_list[i]
+        
+        ps = conn.execute("SELECT driver_id FROM stage_results WHERE rally_id=? AND stage_number=? ORDER BY stage_rank ASC LIMIT 10", (r_id, r['stages_count'])).fetchall()
+        for i, row in enumerate(ps):
+            if i < len(ps_pts_list): driver_points[row['driver_id']] = driver_points.get(row['driver_id'], 0) + ps_pts_list[i]
+            
+    return driver_points
+
 @app.get("/c/{champ_id}/render/rally/{rally_id}", response_class=HTMLResponse)
 def render_rally(request: Request, champ_id: int, rally_id: int):
     conn = get_db_connection()
     champ = get_champ(conn, champ_id)
+    wrc_pts_list, ps_pts_list = get_points_for_champ(conn, champ_id)
     has_overall = conn.execute("SELECT COUNT(*) as c FROM stage_results WHERE rally_id=? AND stage_number=0", (rally_id,)).fetchone()['c']
     
     query_select = "SELECT d.id as d_id, d.discord_name, d.nationality, d.car as driver_car, d.team_id, t.name as team_name, t.car as team_car, t.is_factory, t.color_hex, t.color_border_hex"
@@ -239,13 +332,14 @@ def render_rally(request: Request, champ_id: int, rally_id: int):
         
     stages_count = conn.execute("SELECT stages_count FROM rallies WHERE id=?", (rally_id,)).fetchone()['stages_count']
     ps_results = conn.execute("SELECT driver_id FROM stage_results WHERE rally_id=? AND stage_number=? ORDER BY stage_rank ASC LIMIT 10", (rally_id, stages_count)).fetchall()
-    ps_points_map = {row['driver_id']: PS_POINTS[idx] for idx, row in enumerate(ps_results) if idx < len(PS_POINTS)}
+    
+    ps_points_map = {row['driver_id']: ps_pts_list[idx] for idx, row in enumerate(ps_results) if idx < len(ps_pts_list)}
 
     results_data = []
     if results:
         leader_time = results[0]['total_time']
         for i, r in enumerate(results):
-            pts = (WRC_POINTS[i] if i < len(WRC_POINTS) else 0) + ps_points_map.get(r['d_id'], 0)
+            pts = (wrc_pts_list[i] if i < len(wrc_pts_list) else 0) + ps_points_map.get(r['d_id'], 0)
             w = build_graphic_dict(r, leader_time, pts)
             w['pos'] = i + 1
             results_data.append(w)
@@ -260,7 +354,8 @@ def render_rally(request: Request, champ_id: int, rally_id: int):
 def render_powerstage(request: Request, champ_id: int, rally_id: int):
     conn = get_db_connection(); champ = get_champ(conn, champ_id)
     rally_info = conn.execute("SELECT name, stages_count FROM rallies WHERE id=?", (rally_id,)).fetchone()
-    
+    wrc_pts_list, ps_pts_list = get_points_for_champ(conn, champ_id)
+
     results = conn.execute("""
         SELECT d.id as d_id, d.discord_name, d.nationality, d.car as driver_car, d.team_id, t.name as team_name, t.car as team_car, t.is_factory, t.color_hex, t.color_border_hex, sr.time_ms as total_time
         FROM stage_results sr JOIN drivers d ON sr.driver_id = d.id LEFT JOIN teams t ON d.team_id = t.id
@@ -271,7 +366,7 @@ def render_powerstage(request: Request, champ_id: int, rally_id: int):
     if results:
         leader_time = results[0]['total_time']
         for i, r in enumerate(results):
-            w = build_graphic_dict(r, leader_time, PS_POINTS[i] if i < len(PS_POINTS) else 0)
+            w = build_graphic_dict(r, leader_time, ps_pts_list[i] if i < len(ps_pts_list) else 0)
             w['pos'] = i + 1
             results_data.append(w)
             
@@ -280,27 +375,14 @@ def render_powerstage(request: Request, champ_id: int, rally_id: int):
         "request": request, "pages": paginate_results(results_data), "title": f"POWERSTAGE: {rally_info['name']} - {champ['name']}", "show_points": True
     })
 
+# ZAKTUALIZOWANA klasyfikacja ogólna (kierowcy)
 @app.get("/c/{champ_id}/render/championship", response_class=HTMLResponse)
 def render_championship(request: Request, champ_id: int):
     conn = get_db_connection(); champ = get_champ(conn, champ_id)
-    rallies = conn.execute("SELECT id, stages_count FROM rallies WHERE champ_id=?", (champ_id,)).fetchall()
     participants_db = conn.execute("SELECT DISTINCT id FROM drivers WHERE champ_id = ?", (champ_id,)).fetchall()
     participant_ids = [row['id'] for row in participants_db]
 
-    driver_points = {}
-    for r in rallies:
-        r_id = r['id']
-        has_overall = conn.execute("SELECT COUNT(*) as c FROM stage_results WHERE rally_id=? AND stage_number=0", (r_id,)).fetchone()['c']
-        if has_overall > 0:
-            gen = conn.execute("SELECT driver_id FROM stage_results WHERE rally_id=? AND stage_number=0 ORDER BY stage_rank ASC", (r_id,)).fetchall()
-        else:
-            max_stages = conn.execute("SELECT MAX(c) as max_c FROM (SELECT COUNT(stage_number) as c FROM stage_results WHERE rally_id=? AND stage_number>0 GROUP BY driver_id)", (r_id,)).fetchone()['max_c'] or 0
-            gen = conn.execute("SELECT driver_id, SUM(time_ms) as t FROM stage_results WHERE rally_id=? AND stage_number>0 GROUP BY driver_id HAVING COUNT(stage_number) = ? AND MIN(time_ms) > 0 ORDER BY t ASC", (r_id, max_stages)).fetchall()
-        for i, row in enumerate(gen):
-            if i < len(WRC_POINTS): driver_points[row['driver_id']] = driver_points.get(row['driver_id'], 0) + WRC_POINTS[i]
-        ps = conn.execute("SELECT driver_id FROM stage_results WHERE rally_id=? AND stage_number=? ORDER BY stage_rank ASC LIMIT 10", (r_id, r['stages_count'])).fetchall()
-        for i, row in enumerate(ps):
-            if i < len(PS_POINTS): driver_points[row['driver_id']] = driver_points.get(row['driver_id'], 0) + PS_POINTS[i]
+    driver_points = calculate_driver_points(conn, champ_id)
                 
     drivers_data = conn.execute("""
         SELECT d.id as d_id, d.discord_name, d.nationality, d.car as driver_car, d.team_id, t.name as team_name, t.car as team_car, t.is_factory, t.color_hex, t.color_border_hex 
@@ -324,5 +406,96 @@ def render_championship(request: Request, champ_id: int):
 
     conn.close()
     return templates.TemplateResponse(request=request, name="render_table.html", context={
-        "request": request, "pages": paginate_results(results_data), "title": f"STANDINGS: {champ['name']}", "show_points": False
+        "request": request, "pages": paginate_results(results_data), "title": f"DRIVERS STANDINGS: {champ['name']}", "show_points": False
+    })
+
+# NOWOŚĆ: Klasyfikacja zespołów (Wszystkie zespoły)
+@app.get("/c/{champ_id}/render/teams", response_class=HTMLResponse)
+def render_teams_championship(request: Request, champ_id: int):
+    conn = get_db_connection()
+    champ = get_champ(conn, champ_id)
+    
+    driver_points = calculate_driver_points(conn, champ_id)
+    
+    team_points = {}
+    drivers_db = conn.execute("SELECT id, team_id FROM drivers WHERE champ_id = ?", (champ_id,)).fetchall()
+    for d in drivers_db:
+        if d['team_id']:
+            team_points[d['team_id']] = team_points.get(d['team_id'], 0) + driver_points.get(d['id'], 0)
+            
+    teams_db = conn.execute("SELECT * FROM teams WHERE champ_id = ?", (champ_id,)).fetchall()
+    
+    results_data = []
+    for t in teams_db:
+        pts = team_points.get(t['id'], 0)
+        w = {
+            'discord_name': t['name'],
+            'nationality': '⬜', # Neutralna flaga dla teamów
+            'display_car': t['car'],
+            'is_factory': bool(t['is_factory']),
+            'color_hex': t['color_hex'],
+            'color_border_hex': t['color_border_hex'],
+            'team_name': "Factory Team" if t['is_factory'] else "Privateer Team",
+            'total_points': pts,
+            'points': 0 
+        }
+        results_data.append(w)
+            
+    results_data.sort(key=lambda x: x['total_points'], reverse=True)
+    if results_data:
+        leader_pts = results_data[0]['total_points']
+        for i, w in enumerate(results_data):
+            w['pos'] = i + 1
+            w['time'] = f"{w['total_points']} pts"
+            w['gap'] = "-" if i == 0 else f"-{leader_pts - w['total_points']} pts"
+
+    conn.close()
+    return templates.TemplateResponse(request=request, name="render_table.html", context={
+        "request": request, "pages": paginate_results(results_data), "title": f"TEAMS STANDINGS: {champ['name']}", "show_points": False
+    })
+
+# NOWOŚĆ: Klasyfikacja Konstruktorów (Tylko fabryki)
+@app.get("/c/{champ_id}/render/constructors", response_class=HTMLResponse)
+def render_constructors_championship(request: Request, champ_id: int):
+    conn = get_db_connection()
+    champ = get_champ(conn, champ_id)
+    
+    driver_points = calculate_driver_points(conn, champ_id)
+    
+    team_points = {}
+    drivers_db = conn.execute("SELECT id, team_id FROM drivers WHERE champ_id = ?", (champ_id,)).fetchall()
+    for d in drivers_db:
+        if d['team_id']:
+            team_points[d['team_id']] = team_points.get(d['team_id'], 0) + driver_points.get(d['id'], 0)
+            
+    # UWAGA: Tu pobieramy TYLKO zespoły ze znacznikiem factory
+    teams_db = conn.execute("SELECT * FROM teams WHERE champ_id = ? AND is_factory = 1", (champ_id,)).fetchall()
+    
+    results_data = []
+    for t in teams_db:
+        pts = team_points.get(t['id'], 0)
+        w = {
+            'discord_name': t['name'],
+            'nationality': '⬜',
+            'display_car': t['car'],
+            'is_factory': bool(t['is_factory']),
+            'color_hex': t['color_hex'],
+            'color_border_hex': t['color_border_hex'],
+            'team_name': "Constructor Entry",
+            'total_points': pts,
+            'points': 0 
+        }
+        results_data.append(w)
+            
+    results_data.sort(key=lambda x: x['total_points'], reverse=True)
+    if results_data:
+        leader_pts = results_data[0]['total_points']
+        for i, w in enumerate(results_data):
+            w['pos'] = i + 1
+            w['time'] = f"{w['total_points']} pts"
+            w['gap'] = "-" if i == 0 else f"-{leader_pts - w['total_points']} pts"
+
+    conn.close()
+    return templates.TemplateResponse(request=request, name="render_table.html", context={
+        "request": request, "pages": paginate_results(results_data), "title": f"CONSTRUCTORS STANDINGS: {champ['name']}", "show_points": False
     })

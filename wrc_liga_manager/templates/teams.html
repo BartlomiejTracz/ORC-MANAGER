@@ -1,60 +1,83 @@
 {% extends "base.html" %}
 {% block title %}Teams - {{ champ.name }}{% endblock %}
 {% block content %}
-    <h1 class="page-header">Team Management</h1>
-    <div class="grid">
-        <div class="card" style="border-top: 4px solid var(--primary);">
-            <h2 class="card-title">Team Creator</h2>
-            <form action="/c/{{ champ.id }}/add_team" method="POST">
-                <label>Full Team Name</label><input type="text" name="name" required placeholder="e.g. Toyota Gazoo Racing">
-                <label>Vehicle Model</label><input type="text" name="car" required placeholder="e.g. Toyota GR Yaris Rally1">
-                
-                <div style="display: flex; gap: 15px; margin-top: 10px;">
-                    <div style="flex: 1;"><label>Main Color</label><input type="color" name="color_hex" value="#8b5cf6" style="height: 45px; padding: 2px;"></div>
-                    <div style="flex: 1;"><label>Border Color</label><input type="color" name="color_border_hex" value="#000000" style="height: 45px; padding: 2px;"></div>
-                </div>
-                
-                <div style="margin-top: 15px; margin-bottom: 20px;">
-                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #cbd5e1;">
-                        <input type="checkbox" name="is_factory" value="true" style="width: 20px; height: 20px; margin: 0;">
-                        <span>Mark as a <strong>Factory Team</strong></span>
-                    </label>
-                </div>
-                
-                <button type="submit" class="btn btn-primary btn-block">Create Team</button>
-            </form>
+<h1 class="page-header">🏁 Team Management</h1>
+
+<div class="card" style="border-top: 4px solid #a87ffb; margin-bottom: 30px;">
+    <h2 class="card-title">Add New Team</h2>
+    <form action="/c/{{ champ.id }}/add_team" method="POST" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+        <div style="flex: 1; min-width: 150px;">
+            <label style="display:block; margin-bottom: 5px; color: #64748b; font-weight: 500;">Team Name</label>
+            <input type="text" name="name" required style="width:100%; padding: 10px; border-radius: 4px; border: 1px solid #cbd5e1; background: #ffffff; color: #0f172a; box-sizing: border-box;" placeholder="e.g. Toyota Gazoo Racing">
         </div>
-        <div class="card">
-            <h2 class="card-title">Team Database</h2>
-            <div class="table-responsive">
-                <table>
-                    <thead><tr><th>Livery</th><th>Team Name / Vehicle</th><th style="text-align: right;">Action</th></tr></thead>
-                    <tbody>
-                        {% for t in teams %}
-                        <tr>
-                            <td style="width: 60px;">
-                                {% set m_col = t.color_hex if t.color_hex else '#555' %}
-                                {% set b_col = t.color_border_hex if t.color_border_hex else '#000' %}
-                                {% set dyn_style = 'style="background: ' ~ m_col ~ '; border: 2px solid ' ~ b_col ~ '; width: 30px; height: 30px;"' %}
-                                <div class="color-preview" {{ dyn_style | safe }}></div>
-                            </td>
-                            <td>
-                                <strong>{{ t.name }}</strong>
-                                {% if t.is_factory %}
-                                <span style="background: #f1c40f; color: #000; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px; vertical-align: middle;">FACTORY</span>
-                                {% endif %}<br>
-                                <span style="font-size: 0.85rem; color: #64748b;">{{ t.car }}</span>
-                            </td>
-                            <td style="text-align: right;">
-                                <form action="/c/{{ champ.id }}/delete_team/{{ t.id }}" method="POST" onsubmit="return confirm('Drivers will become Privateers. Continue?');">
-                                    <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div style="flex: 1; min-width: 150px;">
+            <label style="display:block; margin-bottom: 5px; color: #64748b; font-weight: 500;">Car</label>
+            <input type="text" name="car" required style="width:100%; padding: 10px; border-radius: 4px; border: 1px solid #cbd5e1; background: #ffffff; color: #0f172a; box-sizing: border-box;" placeholder="e.g. Toyota GR Yaris Rally1">
         </div>
+        <div style="width: 80px;">
+            <label style="display:block; margin-bottom: 5px; color: #64748b; font-weight: 500;">Main</label>
+            <input type="color" name="color_hex" value="#ff0000" style="width:100%; height: 42px; padding: 2px; border-radius: 4px; border: 1px solid #cbd5e1; background: #ffffff; cursor: pointer; box-sizing: border-box;">
+        </div>
+        <div style="width: 80px;">
+            <label style="display:block; margin-bottom: 5px; color: #64748b; font-weight: 500;">Border</label>
+            <input type="color" name="color_border_hex" value="#990000" style="width:100%; height: 42px; padding: 2px; border-radius: 4px; border: 1px solid #cbd5e1; background: #ffffff; cursor: pointer; box-sizing: border-box;">
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; min-width: 130px; padding-left: 10px;">
+            <input type="checkbox" name="is_factory" id="is_factory" value="true" style="width: 18px; height: 18px; cursor: pointer;">
+            <label for="is_factory" style="color: #0f172a; font-weight: 600; cursor: pointer;">Factory Team</label>
+        </div>
+        <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: bold; height: 42px;">➕ Add</button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th style="padding: 14px; text-align: left; border-bottom: 2px solid #e2e8f0; color: #64748b; font-weight: 600;">ID</th>
+                    <th style="padding: 14px; text-align: left; border-bottom: 2px solid #e2e8f0; color: #64748b; width: 100px; font-weight: 600;">Colors</th>
+                    <th style="padding: 14px; text-align: left; border-bottom: 2px solid #e2e8f0; color: #64748b; font-weight: 600;">Team Name</th>
+                    <th style="padding: 14px; text-align: left; border-bottom: 2px solid #e2e8f0; color: #64748b; font-weight: 600;">Car</th>
+                    <th style="padding: 14px; text-align: center; border-bottom: 2px solid #e2e8f0; color: #64748b; font-weight: 600;">Factory?</th>
+                    <th style="padding: 14px; text-align: right; border-bottom: 2px solid #e2e8f0; color: #64748b; font-weight: 600;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in teams %}
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 14px; vertical-align: middle; color: #0f172a;"><strong>{{ t.id }}</strong></td>
+                    <td style="padding: 14px; vertical-align: middle;">
+                        <input type="color" name="color_hex" value="{{ t.color_hex }}" form="form-edit-{{ t.id }}" style="width: 32px; height: 32px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0; cursor: pointer; background: #fff;">
+                        <input type="color" name="color_border_hex" value="{{ t.color_border_hex }}" form="form-edit-{{ t.id }}" style="width: 32px; height: 32px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0; cursor: pointer; background: #fff; margin-left: 5px;">
+                    </td>
+                    <td style="padding: 14px; vertical-align: middle;">
+                        <input type="text" name="name" value="{{ t.name }}" form="form-edit-{{ t.id }}" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #ffffff; color: #0f172a; font-weight: 500;">
+                    </td>
+                    <td style="padding: 14px; vertical-align: middle;">
+                        <input type="text" name="car" value="{{ t.car }}" form="form-edit-{{ t.id }}" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #ffffff; color: #0f172a;">
+                    </td>
+                    <td style="padding: 14px; text-align: center; vertical-align: middle;">
+                        <input type="checkbox" name="is_factory" value="true" form="form-edit-{{ t.id }}" {% if t.is_factory %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
+                    </td>
+                    <td style="padding: 14px; vertical-align: middle;">
+                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                            <form id="form-edit-{{ t.id }}" action="/c/{{ champ.id }}/update_team/{{ t.id }}" method="POST" style="margin:0;">
+                                <button type="submit" class="btn btn-success" style="padding: 10px 16px; font-weight: bold; border-radius: 5px;">Save</button>
+                            </form>
+                            <form action="/c/{{ champ.id }}/delete_team/{{ t.id }}" method="POST" onsubmit="return confirm('Delete team permanently?');" style="margin:0;">
+                                <button type="submit" class="btn btn-danger" style="padding: 10px 16px; font-weight: bold; border-radius: 5px;">Del</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="padding: 30px; text-align: center; color: #64748b; font-size: 1.1rem;">No teams added yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+</div>
 {% endblock %}
