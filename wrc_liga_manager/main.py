@@ -1,12 +1,17 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 import sqlite3
 import pandas as pd
 import io
 import json
 
 app = FastAPI()
+
+# Zamontowanie folderu z plikami statycznymi (np. grafikami)
+app.mount("/assets", StaticFiles(directory="assets"), name="assets")
+
 templates = Jinja2Templates(directory="templates")
 
 # Fallback defaults (w razie gdyby coś poszło nie tak)
@@ -283,7 +288,6 @@ def build_graphic_dict(r, leader_time=None, pts=0):
     w['points'] = pts
     return w
 
-# NOWOŚĆ: Funkcja zliczająca punkty wszystkich kierowców (żeby nie kopiować kodu)
 def calculate_driver_points(conn, champ_id):
     rallies = conn.execute("SELECT id, stages_count FROM rallies WHERE champ_id=?", (champ_id,)).fetchall()
     wrc_pts_list, ps_pts_list = get_points_for_champ(conn, champ_id)
@@ -375,7 +379,6 @@ def render_powerstage(request: Request, champ_id: int, rally_id: int):
         "request": request, "pages": paginate_results(results_data), "title": f"POWERSTAGE: {rally_info['name']} - {champ['name']}", "show_points": True
     })
 
-# ZAKTUALIZOWANA klasyfikacja ogólna (kierowcy)
 @app.get("/c/{champ_id}/render/championship", response_class=HTMLResponse)
 def render_championship(request: Request, champ_id: int):
     conn = get_db_connection(); champ = get_champ(conn, champ_id)
@@ -409,7 +412,6 @@ def render_championship(request: Request, champ_id: int):
         "request": request, "pages": paginate_results(results_data), "title": f"DRIVERS STANDINGS: {champ['name']}", "show_points": False
     })
 
-# NOWOŚĆ: Klasyfikacja zespołów (Wszystkie zespoły)
 @app.get("/c/{champ_id}/render/teams", response_class=HTMLResponse)
 def render_teams_championship(request: Request, champ_id: int):
     conn = get_db_connection()
@@ -430,7 +432,7 @@ def render_teams_championship(request: Request, champ_id: int):
         pts = team_points.get(t['id'], 0)
         w = {
             'discord_name': t['name'],
-            'nationality': '⬜', # Neutralna flaga dla teamów
+            'nationality': '⬜',
             'display_car': t['car'],
             'is_factory': bool(t['is_factory']),
             'color_hex': t['color_hex'],
@@ -454,7 +456,6 @@ def render_teams_championship(request: Request, champ_id: int):
         "request": request, "pages": paginate_results(results_data), "title": f"TEAMS STANDINGS: {champ['name']}", "show_points": False
     })
 
-# NOWOŚĆ: Klasyfikacja Konstruktorów (Tylko fabryki)
 @app.get("/c/{champ_id}/render/constructors", response_class=HTMLResponse)
 def render_constructors_championship(request: Request, champ_id: int):
     conn = get_db_connection()
@@ -468,7 +469,6 @@ def render_constructors_championship(request: Request, champ_id: int):
         if d['team_id']:
             team_points[d['team_id']] = team_points.get(d['team_id'], 0) + driver_points.get(d['id'], 0)
             
-    # UWAGA: Tu pobieramy TYLKO zespoły ze znacznikiem factory
     teams_db = conn.execute("SELECT * FROM teams WHERE champ_id = ? AND is_factory = 1", (champ_id,)).fetchall()
     
     results_data = []
