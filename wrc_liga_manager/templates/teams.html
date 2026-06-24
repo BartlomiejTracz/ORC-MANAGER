@@ -12,7 +12,7 @@
         </div>
         <div style="flex: 1; min-width: 150px;">
             <label style="display:block; margin-bottom: 5px; color: #64748b; font-weight: 500;">Car</label>
-            <input type="text" name="car" required style="width:100%; padding: 10px; border-radius: 4px; border: 1px solid #cbd5e1; background: #ffffff; color: #0f172a; box-sizing: border-box;" placeholder="e.g. Toyota GR Yaris Rally1">
+            <input type="text" name="car" list="car-list" required style="width:100%; padding: 10px; border-radius: 4px; border: 1px solid #cbd5e1; background: #ffffff; color: #0f172a; box-sizing: border-box;" placeholder="e.g. Toyota GR Yaris Rally1">
         </div>
         <div style="width: 80px;">
             <label style="display:block; margin-bottom: 5px; color: #64748b; font-weight: 500;">Main</label>
@@ -55,7 +55,7 @@
                         <input type="text" name="name" value="{{ t.name }}" form="form-edit-{{ t.id }}" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #ffffff; color: #0f172a; font-weight: 500;">
                     </td>
                     <td style="padding: 14px; vertical-align: middle;">
-                        <input type="text" name="car" value="{{ t.car }}" form="form-edit-{{ t.id }}" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #ffffff; color: #0f172a;">
+                        <input type="text" name="car" list="car-list" value="{{ t.car }}" form="form-edit-{{ t.id }}" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #ffffff; color: #0f172a;">
                     </td>
                     <td style="padding: 14px; text-align: center; vertical-align: middle;">
                         <input type="checkbox" name="is_factory" value="true" form="form-edit-{{ t.id }}" {% if t.is_factory %}checked{% endif %} style="width: 20px; height: 20px; cursor: pointer;">
@@ -80,4 +80,29 @@
         </table>
     </div>
 </div>
+
+<datalist id="car-list">
+    {% for c in unique_cars %}
+        <option value="{{ c }}">
+    {% endfor %}
+    <option value="Toyota GR Yaris Rally1">
+    <option value="Hyundai i20 N Rally1">
+    <option value="Ford Puma Rally1">
+    <option value="Skoda Fabia RS Rally2">
+    <option value="Skoda Fabia Rally2 evo">
+    <option value="Toyota GR Yaris Rally2">
+    <option value="Hyundai i20 N Rally2">
+    <option value="Citroen C3 Rally2">
+    <option value="Ford Fiesta Rally2">
+    <option value="VW Polo GTI R5">
+    <option value="Ford Fiesta Rally3">
+    <option value="Renault Clio Rally3">
+    <option value="Peugeot 208 Rally4">
+    <option value="Ford Fiesta Rally4">
+    <option value="Subaru Impreza WRC">
+    <option value="Mitsubishi Lancer WRC">
+    <option value="Ford Focus RS WRC">
+    <option value="Citroen C4 WRC">
+    <option value="Peugeot 206 WRC">
+</datalist>
 {% endblock %}

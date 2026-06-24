@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Add Results - {{ champ.name }}{% endblock %}
+{% block content %}
+    <style>
+        .results-table input[type="text"] {
+            margin-bottom: 0 !important;
+            padding: 8px 10px;
+            width: 100%;
+        }
+        .results-table td {
+            padding: 6px 10px;
+        }
+        .results-table th {
+            text-align: center;
+        }
+    </style>
+
+    <h1 class="page-header">✍️ Add Results</h1>
+    
+    <div class="card" style="border-top: 4px solid #2ecc71;">
+        <p style="margin-bottom: 20px; color: #64748b;">
+            Fill in the overall rally results. The system will automatically create new drivers or teams if they don't exist yet. Empty rows will be safely ignored. Type to search or create new!
+        </p>
+
+        <form action="/c/{{ champ.id }}/manual_entry/submit" method="POST">
+            
+            <div style="margin-bottom: 25px; max-width: 400px;">
+                <label for="rally_id">Choose Rally:</label>
+                <select name="rally_id" id="rally_id" required>
+                    <option value="" disabled selected>-- Choose Rally --</option>
+                    {% for r in rallies %}
+                        <option value="{{ r.id }}">{{ r.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="table-responsive">
+                <table class="results-table" style="min-width: 900px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Pos</th>
+                            <th>Driver Nick</th>
+                            <th>Car</th>
+                            <th>Country</th>
+                            <th>Team</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        <!-- Rows injected by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <button type="button" class="btn btn-primary" onclick="addMoreRows(5)" style="background-color: #34495e;">+ Add more positions</button>
+                <button type="submit" class="btn btn-success" style="padding: 12px 30px; font-size: 1.2rem;">💾 Save Results</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- DATALISTS (Searchable dropdowns attached to text inputs) -->
+    
+    <datalist id="driver-list">
+        {% for d in drivers %}
+            <option value="{{ d.discord_name }}">
+        {% endfor %}
+    </datalist>
+
+    <datalist id="team-list">
+        <option value="Privateer">
+        {% for t in teams %}
+            <option value="{{ t.name }}">
+        {% endfor %}
+    </datalist>
+
+    <datalist id="car-list">
+        {% for c in unique_cars %}
+            <option value="{{ c }}">
+        {% endfor %}
+        <option value="Toyota GR Yaris Rally1">
+        <option value="Hyundai i20 N Rally1">
+        <option value="Ford Puma Rally1">
+        <option value="Skoda Fabia RS Rally2">
+        <option value="Skoda Fabia Rally2 evo">
+        <option value="Toyota GR Yaris Rally2">
+        <option value="Hyundai i20 N Rally2">
+        <option value="Citroen C3 Rally2">
+        <option value="Ford Fiesta Rally2">
+        <option value="VW Polo GTI R5">
+        <option value="Ford Fiesta Rally3">
+        <option value="Renault Clio Rally3">
+        <option value="Peugeot 208 Rally4">
+        <option value="Ford Fiesta Rally4">
+        <option value="Subaru Impreza WRC">
+        <option value="Mitsubishi Lancer WRC">
+        <option value="Ford Focus RS WRC">
+        <option value="Citroen C4 WRC">
+        <option value="Peugeot 206 WRC">
+    </datalist>
+
+    <datalist id="country-list">
+        <option value="🏳️ None">
+        <option value="🇵🇱 POL">
+        <option value="🇬🇧 GBR">
+        <option value="🇫🇷 FRA">
+        <option value="🇫🇮 FIN">
+        <option value="🇸🇪 SWE">
+        <option value="🇳🇴 NOR">
+        <option value="🇪🇪 EST">
+        <option value="🇱🇻 LVA">
+        <option value="🇱🇹 LTU">
+        <option value="🇮🇹 ITA">
+        <option value="🇪🇸 ESP">
+        <option value="🇵🇹 PRT">
+        <option value="🇩🇪 DEU">
+        <option value="🇦🇹 AUT">
+        <option value="🇨🇭 CHE">
+        <option value="🇮🇪 IRL">
+        <option value="🇨🇿 CZE">
+        <option value="🇸🇰 SVK">
+        <option value="🇭🇺 HUN">
+        <option value="🇷🇴 ROU">
+        <option value="🇧🇬 BGR">
+        <option value="🇬🇷 GRC">
+        <option value="🇺🇸 USA">
+        <option value="🇨🇦 CAN">
+        <option value="🇦🇺 AUS">
+        <option value="🇳🇿 NZL">
+        <option value="🇯🇵 JPN">
+        <option value="🇦🇷 ARG">
+        <option value="🇨🇱 CHL">
+        <option value="🇧🇷 BRA">
+        <option value="🇲🇽 MEX">
+        <option value="🇿🇦 ZAF">
+    </datalist>
+
+    <!-- HIDDEN ROW TEMPLATE -->
+    <template id="row-template">
+        <tr>
+            <td class="pos-num" style="text-align: center; font-weight: bold; color: var(--danger); font-size: 1.1rem;"></td>
+            
+            <td><input type="text" name="nick[]" list="driver-list" placeholder="Driver Nick" onchange="handleDriverSelection(this)"></td>
+            <td><input type="text" name="car[]" list="car-list" placeholder="Car (Type or Select)"></td>
+            <td><input type="text" name="country[]" list="country-list" placeholder="Country"></td>
+            <td><input type="text" name="team[]" list="team-list" placeholder="Team Name" onchange="handleTeamSelection(this)"></td>
+            <td><input type="text" name="time[]" placeholder="00:00.000"></td>
+        </tr>
+    </template>
+
+    <!-- Transfer JSON Data Securely -->
+    <script id="drivers-data" type="application/json">
+        {{ drivers_json | safe }}
+    </script>
+    <script id="teams-data" type="application/json">
+        {{ teams_json | safe }}
+    </script>
+
+    <script>
+        // Odbieramy dane ze struktur JSON
+        const knownDrivers = JSON.parse(document.getElementById('drivers-data').textContent || '{}');
+        const teamCars = JSON.parse(document.getElementById('teams-data').textContent || '{}');
+
+        function handleDriverSelection(inputObj) {
+            const row = inputObj.closest('tr');
+            const nick = inputObj.value.trim();
+            const driverInfo = knownDrivers[nick];
+
+            if (driverInfo) {
+                const carInput = row.querySelector('input[name="car[]"]');
+                const countryInput = row.querySelector('input[name="country[]"]');
+                const teamInput = row.querySelector('input[name="team[]"]');
+
+                if (driverInfo.car && carInput.value === "") {
+                    carInput.value = driverInfo.car;
+                }
+                if (driverInfo.country && countryInput.value === "") {
+                    countryInput.value = driverInfo.country;
+                }
+                if (driverInfo.team && teamInput.value === "") {
+                    teamInput.value = driverInfo.team;
+                }
+            }
+        }
+
+        function handleTeamSelection(inputObj) {
+            const row = inputObj.closest('tr');
+            const carInput = row.querySelector('input[name="car[]"]');
+            const teamName = inputObj.value.trim();
+
+            if (teamName !== "Privateer" && teamCars[teamName] && carInput.value === "") {
+                carInput.value = teamCars[teamName];
+            }
+        }
+
+        let currentPos = 0;
+        function addMoreRows(count) {
+            const tbody = document.getElementById('resultsBody');
+            const template = document.getElementById('row-template');
+            for(let i = 0; i < count; i++) {
+                currentPos++;
+                const clone = template.content.cloneNode(true);
+                clone.querySelector('.pos-num').textContent = currentPos;
+                tbody.appendChild(clone);
+            }
+        }
+
+        window.onload = function() {
+            addMoreRows(10);
+        };
+    </script>
+{% endblock %}

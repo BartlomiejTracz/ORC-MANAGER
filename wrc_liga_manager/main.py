@@ -6,6 +6,7 @@ import sqlite3
 import pandas as pd
 import io
 import json
+from typing import Optional
 
 app = FastAPI()
 
@@ -73,6 +74,8 @@ def format_time(ms):
 
 def parse_racenet_time(time_str):
     if pd.isna(time_str) or not isinstance(time_str, str): return 0
+    # Zamiana przecinka na kropkę (wsparcie dla wpisywania "14:25,320")
+    time_str = str(time_str).replace(',', '.').strip()
     try:
         main_part = time_str.split('.')[0]
         fractions = time_str.split('.')[1][:3] if '.' in time_str else "000"
@@ -149,10 +152,22 @@ def rallies(request: Request, champ_id: int):
 
 @app.get("/c/{champ_id}/teams", response_class=HTMLResponse)
 def teams(request: Request, champ_id: int):
-    conn = get_db_connection(); champ = get_champ(conn, champ_id)
+    conn = get_db_connection()
+    champ = get_champ(conn, champ_id)
     teams = conn.execute("SELECT * FROM teams WHERE champ_id = ?", (champ_id,)).fetchall()
+    
+    cars_db = conn.execute("""
+        SELECT DISTINCT car FROM drivers WHERE champ_id = ? AND car != '' AND car IS NOT NULL
+        UNION
+        SELECT DISTINCT car FROM teams WHERE champ_id = ? AND car != '' AND car IS NOT NULL
+        ORDER BY car ASC
+    """, (champ_id, champ_id)).fetchall()
+    unique_cars = [row['car'] for row in cars_db]
+    
     conn.close()
-    return templates.TemplateResponse(request=request, name="teams.html", context={"request": request, "champ": champ, "teams": teams})
+    return templates.TemplateResponse(request=request, name="teams.html", context={
+        "request": request, "champ": champ, "teams": teams, "unique_cars": unique_cars
+    })
 
 @app.get("/c/{champ_id}/drivers", response_class=HTMLResponse)
 def drivers(request: Request, champ_id: int):
@@ -176,6 +191,108 @@ def import_page(request: Request, champ_id: int):
         uploaded_stages[r_id].append(row['stage_number'])
         
     return templates.TemplateResponse(request=request, name="import.html", context={"request": request, "champ": champ, "rallies": rallies, "uploaded_stages": json.dumps(uploaded_stages)})
+
+# --- BULK MANUAL ENTRY ---
+@app.get("/c/{champ_id}/manual_entry", response_class=HTMLResponse)
+def manual_entry_page(request: Request, champ_id: int):
+    conn = get_db_connection()
+    champ = get_champ(conn, champ_id)
+    rallies = conn.execute("SELECT * FROM rallies WHERE champ_id = ?", (champ_id,)).fetchall()
+    teams = conn.execute("SELECT * FROM teams WHERE champ_id = ? ORDER BY name ASC", (champ_id,)).fetchall()
+    
+    drivers = conn.execute("""
+        SELECT d.*, t.name as team_name 
+        FROM drivers d 
+        LEFT JOIN teams t ON d.team_id = t.id 
+        WHERE d.champ_id = ? ORDER BY d.discord_name ASC
+    """, (champ_id,)).fetchall()
+    
+    cars_db = conn.execute("""
+        SELECT DISTINCT car FROM drivers WHERE champ_id = ? AND car != '' AND car IS NOT NULL
+        UNION
+        SELECT DISTINCT car FROM teams WHERE champ_id = ? AND car != '' AND car IS NOT NULL
+        ORDER BY car ASC
+    """, (champ_id, champ_id)).fetchall()
+    unique_cars = [row['car'] for row in cars_db]
+    
+    # Tworzymy słowniki Pythona dla JavaScript i rzutujemy je na czysty ciąg JSON
+    drivers_dict = {
+        d['discord_name']: {
+            "car": d['car'] if d['car'] else "",
+            "country": d['nationality'] if d['nationality'] else "",
+            "team": d['team_name'] if d['team_name'] else "Privateer"
+        } for d in drivers
+    }
+    teams_dict = {
+        t['name']: t['car'] if t['car'] else "" for t in teams
+    }
+    
+    conn.close()
+    return templates.TemplateResponse(request=request, name="manual_entry.html", context={
+        "request": request, "champ": champ, "rallies": rallies, "teams": teams, 
+        "unique_cars": unique_cars, "drivers": drivers,
+        "drivers_json": json.dumps(drivers_dict),
+        "teams_json": json.dumps(teams_dict)
+    })
+
+@app.post("/c/{champ_id}/manual_entry/submit")
+async def submit_manual_entry(request: Request, champ_id: int):
+    form = await request.form()
+    rally_id = int(form.get("rally_id"))
+    
+    nicks = form.getlist("nick[]")
+    cars = form.getlist("car[]")
+    countries = form.getlist("country[]")
+    teams_list = form.getlist("team[]")
+    times = form.getlist("time[]")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    position = 1
+    for i in range(len(nicks)):
+        nick = nicks[i].strip()
+        if not nick: continue
+            
+        car = cars[i].strip() if i < len(cars) else ""
+        country = countries[i].strip() if i < len(countries) else ""
+        team_name = teams_list[i].strip() if i < len(teams_list) else ""
+        time_str = times[i].strip() if i < len(times) else ""
+        
+        team_id = None
+        if team_name and team_name.lower() not in ["privateer", "none", "0", ""]:
+            cursor.execute("SELECT id FROM teams WHERE name = ? AND champ_id = ?", (team_name, champ_id))
+            t_res = cursor.fetchone()
+            if t_res:
+                team_id = t_res['id']
+            else:
+                cursor.execute("INSERT INTO teams (champ_id, name, car, color_hex, color_border_hex, is_factory) VALUES (?, ?, ?, ?, ?, ?)",
+                               (champ_id, team_name, car, "#555555", "#333333", 0))
+                team_id = cursor.lastrowid
+                
+        cursor.execute("SELECT id FROM drivers WHERE discord_name = ? AND champ_id = ?", (nick, champ_id))
+        d_res = cursor.fetchone()
+        
+        if d_res:
+            driver_id = d_res['id']
+            cursor.execute("UPDATE drivers SET car = ?, nationality = ?, team_id = ? WHERE id = ?",
+                           (car, country, team_id, driver_id))
+        else:
+            cursor.execute("INSERT INTO drivers (champ_id, discord_name, ea_nickname, platform, car, nationality, team_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                           (champ_id, nick, nick, "PC", car, country, team_id))
+            driver_id = cursor.lastrowid
+            
+        time_ms = parse_racenet_time(time_str)
+        cursor.execute("DELETE FROM stage_results WHERE rally_id=? AND driver_id=? AND stage_number=0", (rally_id, driver_id))
+        cursor.execute("INSERT INTO stage_results (rally_id, driver_id, stage_number, time_ms, stage_rank) VALUES (?, ?, ?, ?, ?)", 
+                       (rally_id, driver_id, 0, time_ms, position))
+        
+        position += 1
+
+    conn.commit()
+    conn.close()
+    return RedirectResponse(url=f"/c/{champ_id}/dashboard", status_code=303)
+
 
 @app.get("/c/{champ_id}/graphics", response_class=HTMLResponse)
 def graphics_page(request: Request, champ_id: int):
@@ -224,16 +341,20 @@ async def upload_csv(request: Request, champ_id: int):
     conn.commit(); conn.close()
     return RedirectResponse(url=f"/c/{champ_id}/import", status_code=303)
 
+
 @app.post("/c/{champ_id}/add_rally")
 def add_r(champ_id: int, name: str=Form(...), stages_count: int=Form(...)):
     conn=get_db_connection(); conn.execute("INSERT INTO rallies (champ_id, name, stages_count) VALUES (?,?,?)", (champ_id, name, stages_count)); conn.commit(); return RedirectResponse(f"/c/{champ_id}/rallies", 303)
 
 @app.post("/c/{champ_id}/add_team")
-def add_t(champ_id: int, name: str=Form(...), car: str=Form(...), color_hex: str=Form(...), color_border_hex: str=Form(...), is_factory: bool=Form(False)):
-    conn=get_db_connection(); conn.execute("INSERT INTO teams (champ_id, name, car, color_hex, color_border_hex, is_factory) VALUES (?,?,?,?,?,?)", (champ_id, name,car,color_hex,color_border_hex, int(is_factory))); conn.commit(); return RedirectResponse(f"/c/{champ_id}/teams", 303)
+def add_t(champ_id: int, name: str=Form(""), car: str=Form(""), color_hex: str=Form("#555555"), color_border_hex: str=Form("#333333"), is_factory: bool=Form(False)):
+    conn=get_db_connection()
+    conn.execute("INSERT INTO teams (champ_id, name, car, color_hex, color_border_hex, is_factory) VALUES (?,?,?,?,?,?)", (champ_id, name,car,color_hex,color_border_hex, int(is_factory)))
+    conn.commit()
+    return RedirectResponse(f"/c/{champ_id}/teams", 303)
 
 @app.post("/c/{champ_id}/update_team/{team_id}")
-def update_team(champ_id: int, team_id: int, name: str=Form(...), car: str=Form(...), color_hex: str=Form(...), color_border_hex: str=Form(...), is_factory: bool=Form(False)):
+def update_team(champ_id: int, team_id: int, name: str=Form(""), car: str=Form(""), color_hex: str=Form("#555555"), color_border_hex: str=Form("#333333"), is_factory: bool=Form(False)):
     conn = get_db_connection()
     conn.execute("UPDATE teams SET name=?, car=?, color_hex=?, color_border_hex=?, is_factory=? WHERE id=? AND champ_id=?", 
                  (name, car, color_hex, color_border_hex, int(is_factory), team_id, champ_id))
@@ -242,7 +363,7 @@ def update_team(champ_id: int, team_id: int, name: str=Form(...), car: str=Form(
     return RedirectResponse(f"/c/{champ_id}/teams", 303)
 
 @app.post("/c/{champ_id}/update_driver/{d_id}")
-def update_d(champ_id: int, d_id: int, discord_name: str=Form(...), team_id: int=Form(...), nationality: str=Form(...), car: str=Form("")):
+def update_d(champ_id: int, d_id: int, discord_name: str=Form(""), team_id: int=Form(0), nationality: str=Form(""), car: str=Form("")):
     conn=get_db_connection()
     conn.execute("UPDATE drivers SET discord_name=?, team_id=?, nationality=?, car=? WHERE id=? AND champ_id=?", 
                  (discord_name, None if team_id==0 else team_id, nationality, car, d_id, champ_id))
